@@ -256,6 +256,109 @@ const SECURITY_PATTERNS = {
     }
   ],
 
+  // MEDIUM-HIGH SEVERITY - Obfuscation Techniques
+  obfuscationTechniques: [
+    {
+      id: 'excessive-hex-escapes',
+      pattern: /(?:\\x[0-9a-fA-F]{2}){4,}/gi,
+      severity: 'medium',
+      category: 'obfuscation',
+      title: 'Excessive hex escape sequences',
+      description: 'Long chains of hex escape sequences used to hide string content',
+      remediation: 'Use readable string literals instead of hex escape sequences'
+    },
+    {
+      id: 'excessive-unicode-escapes',
+      pattern: /(?:\\u[0-9a-fA-F]{4}){4,}/gi,
+      severity: 'medium',
+      category: 'obfuscation',
+      title: 'Excessive unicode escape sequences',
+      description: 'Long chains of unicode escape sequences used to hide string content',
+      remediation: 'Use readable string literals instead of unicode escape sequences'
+    },
+    {
+      id: 'string-fromcharcode-obfuscation',
+      pattern: /String\.fromCharCode\(\s*\d+(?:\s*,\s*\d+){3,}\)/gi,
+      severity: 'medium',
+      category: 'obfuscation',
+      title: 'String.fromCharCode obfuscation',
+      description: 'Character codes used to construct strings dynamically, hiding their content',
+      remediation: 'Use plain string literals instead of String.fromCharCode'
+    },
+    {
+      id: 'split-reverse-join',
+      pattern: /['"][^'"]+['"]\.split\(['"]['"]\)\.reverse\(\)\.join\(['"]['"]\)/gi,
+      severity: 'medium',
+      category: 'obfuscation',
+      title: 'String reversal obfuscation',
+      description: 'Strings reversed at runtime to evade static pattern detection',
+      remediation: 'Use readable string literals; string reversal is a known obfuscation technique'
+    },
+    {
+      id: 'excessive-string-concat',
+      pattern: /(?:['"][a-zA-Z0-9]{1,3}['"]\s*\+\s*){4,}['"][a-zA-Z0-9]{1,3}['"]/gi,
+      severity: 'medium',
+      category: 'obfuscation',
+      title: 'Excessive single-character string concatenation',
+      description: 'Strings built character-by-character to evade pattern matching',
+      remediation: 'Use complete string literals instead of character-by-character concatenation'
+    },
+    {
+      id: 'eval-with-constructed-string',
+      pattern: /eval\(\s*(?:[a-zA-Z_$][\w$]*\s*\+|['"].*?\+|String\.fromCharCode|atob|Buffer\.from)/gi,
+      severity: 'high',
+      category: 'obfuscation',
+      title: 'eval() with constructed/decoded string',
+      description: 'Code is dynamically constructed and evaluated, a strong indicator of malicious intent',
+      remediation: 'Remove eval() usage entirely; use safe alternatives for data parsing'
+    },
+    {
+      id: 'function-constructor-obfuscation',
+      pattern: /(?:new\s+)?Function\(\s*(?:atob|Buffer\.from|String\.fromCharCode|['"].*?\+)/gi,
+      severity: 'high',
+      category: 'obfuscation',
+      title: 'Function constructor with obfuscated code',
+      description: 'Function() constructor used with decoded/constructed strings to hide executable code',
+      remediation: 'Remove Function() constructor usage; define functions normally'
+    },
+    {
+      id: 'array-index-string-access',
+      pattern: /(?:var|let|const)\s+_0x[a-fA-F0-9]+\s*=\s*\[/gi,
+      severity: 'high',
+      category: 'obfuscation',
+      title: 'Obfuscator-style array string table',
+      description: 'Array-based string table with hex-named variable, typical of JS obfuscators',
+      remediation: 'Use readable code; automated obfuscation tools indicate intent to hide behavior'
+    },
+    {
+      id: 'url-encoding-obfuscation',
+      pattern: /(?:%[0-9a-fA-F]{2}){5,}/gi,
+      severity: 'medium',
+      category: 'obfuscation',
+      title: 'URL-encoded string obfuscation',
+      description: 'Strings encoded with URL percent-encoding to hide content',
+      remediation: 'Use plain text strings instead of URL-encoded obfuscation'
+    },
+    {
+      id: 'template-literal-char-split',
+      pattern: /`(?:\$\{['"][a-zA-Z0-9]{1,2}['"]\}){4,}`/gi,
+      severity: 'medium',
+      category: 'obfuscation',
+      title: 'Template literal character splitting',
+      description: 'Template literals used to build strings character-by-character',
+      remediation: 'Use plain string literals instead of template literal character splitting'
+    },
+    {
+      id: 'incremental-string-building',
+      pattern: /(?:[a-zA-Z_$][\w$]*\s*\+=\s*['"][^'"]{1,5}['"]\s*;?\s*){3,}/gi,
+      severity: 'medium',
+      category: 'obfuscation',
+      title: 'Incremental string building',
+      description: 'String built up through multiple += operations to hide final value',
+      remediation: 'Use a single string assignment instead of incremental concatenation'
+    }
+  ],
+
   // LOW SEVERITY - Best Practice Violations
   bestPracticeViolations: [
     {

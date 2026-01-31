@@ -11,6 +11,7 @@ const {
 } = require('./patterns');
 const { analyzeSkillStructure } = require('./analyzer');
 const { generateReport } = require('./reporter');
+const { Deobfuscator } = require('./deobfuscator');
 
 class AgentShieldScanner {
   constructor() {
@@ -29,16 +30,71 @@ class AgentShieldScanner {
       // Parse input - could be raw content, URL, or GitHub repo
       const { content, source, metadata } = await this.parseInput(input);
       
-      // Core analysis
+      // Deobfuscation pass — run BEFORE pattern matching
+      const deobfuscator = new Deobfuscator();
+      const deobResult = deobfuscator.deobfuscate(content);
+
+      // Core analysis on ORIGINAL content
       const codeAnalysis = analyzeCode(content);
       const structureAnalysis = analyzeStructure(content);
       const dependencyAnalysis = metadata.packageJson ? 
         analyzeDependencies(metadata.packageJson) : [];
       const skillAnalysis = analyzeSkillStructure(content);
 
+      // If obfuscation was detected, also scan the deobfuscated version
+      let deobfuscatedFindings = [];
+      if (deobResult.obfuscationDetected && deobResult.deobfuscated !== content) {
+        const deobCodeAnalysis = analyzeCode(deobResult.deobfuscated);
+        const deobStructureAnalysis = analyzeStructure(deobResult.deobfuscated);
+
+        // Collect findings from deobfuscated code that weren't found in original
+        // Deduplicate by patternId + evidence to avoid noise
+        const originalIds = new Set(codeAnalysis.findings.map(f => `${f.patternId}:${f.evidence}`));
+        deobfuscatedFindings = deobCodeAnalysis.findings
+          .filter(f => !originalIds.has(`${f.patternId}:${f.evidence}`))
+          // Skip low-severity noise from deobfuscation artifacts (comments, etc)
+          .filter(f => f.severity !== 'low')
+          .map(f => ({
+            ...f,
+            title: `[DEOBFUSCATED] ${f.title}`,
+            description: `Found after deobfuscation: ${f.description}`
+          }));
+
+        // Merge permissions
+        Object.keys(deobCodeAnalysis.permissions).forEach(key => {
+          if (deobCodeAnalysis.permissions[key]) {
+            codeAnalysis.permissions[key] = true;
+          }
+        });
+
+        // Also add structure findings from deobfuscated
+        const origStructIds = new Set(structureAnalysis.map(s => `${s.type}:${s.line}`));
+        deobStructureAnalysis
+          .filter(s => !origStructIds.has(`${s.type}:${s.line}`))
+          .forEach(s => structureAnalysis.push({ ...s, type: `deobfuscated-${s.type}` }));
+      }
+
+      // Add obfuscation meta-finding if detected
+      const obfuscationFindings = [];
+      if (deobResult.obfuscationDetected) {
+        obfuscationFindings.push({
+          severity: 'high',
+          category: 'obfuscation',
+          title: 'Code obfuscation detected',
+          description: `Obfuscation techniques found: ${deobResult.obfuscationTypes.join(', ')}. ` +
+            `${deobResult.transformations.length} transformation(s) applied to reveal hidden code.`,
+          evidence: deobResult.transformations.slice(0, 3).join('; '),
+          line: 0,
+          remediation: 'Use readable, transparent code. Obfuscation in AI agent skills is inherently suspicious.',
+          patternId: 'obfuscation-meta'
+        });
+      }
+
       // Combine all findings
       const allFindings = [
         ...codeAnalysis.findings,
+        ...deobfuscatedFindings,
+        ...obfuscationFindings,
         ...structureAnalysis.map(s => ({
           severity: s.severity,
           category: 'skill-structure',
@@ -87,7 +143,13 @@ class AgentShieldScanner {
           linesScanned: content.split('\n').length,
           patternsChecked: this.getTotalPatterns(),
           scanDurationMs: Date.now() - startTime,
-          skillStructure: skillAnalysis.structure
+          skillStructure: skillAnalysis.structure,
+          deobfuscation: {
+            obfuscationDetected: deobResult.obfuscationDetected,
+            obfuscationTypes: deobResult.obfuscationTypes,
+            transformationsApplied: deobResult.transformations.length,
+            additionalFindingsFromDeobfuscation: deobfuscatedFindings.length
+          }
         }
       });
 

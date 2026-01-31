@@ -1,7 +1,7 @@
 # 🛡️ AgentShield - AI Agent Security Scanner
 
 [![Security Badge](https://img.shields.io/badge/security-audited-brightgreen)](https://github.com/SiamakSafari/agent-shield)
-[![API Status](https://img.shields.io/badge/API-operational-brightgreen)](https://agentshield.dev/health)
+[![API Status](https://img.shields.io/badge/API-operational-brightgreen)](https://agent-shield-production.up.railway.app/health)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 > **Production-ready security scanner for AI agent skills and plugins**  
@@ -61,17 +61,17 @@ AgentShield scans AI agent skills (SKILL.md files, shell scripts, config files) 
 
 ```bash
 # Scan a skill URL
-curl -X POST https://agentshield.dev/scan \
+curl -X POST https://agent-shield-production.up.railway.app/scan \
   -H "Content-Type: application/json" \
   -d '{"url": "https://example.com/SKILL.md"}'
 
 # Scan GitHub repository
-curl -X POST https://agentshield.dev/scan \
+curl -X POST https://agent-shield-production.up.railway.app/scan \
   -H "Content-Type: application/json" \
   -d '{"github": "https://github.com/user/skill-repo"}'
 
 # Scan raw content
-curl -X POST https://agentshield.dev/scan \
+curl -X POST https://agent-shield-production.up.railway.app/scan \
   -H "Content-Type: application/json" \
   -d '{"content": "# My Skill\n..."}'
 ```
@@ -125,11 +125,20 @@ docker run -p 3000:3000 agent-shield
 
 ### Authentication
 
-Include your API key in requests:
+**Basic scans are free and require NO authentication:**
+
+```bash
+# No API key needed — just POST your skill content
+curl -X POST https://agent-shield-production.up.railway.app/api/scan \
+  -H "Content-Type: application/json" \
+  -d '{"content": "your SKILL.md content here"}'
+```
+
+For higher rate limits, include an API key:
 
 ```bash
 curl -H "X-API-Key: ash_your_api_key_here" \
-     https://agentshield.dev/scan
+     https://agent-shield-production.up.railway.app/api/scan
 ```
 
 ### Core Endpoints
@@ -184,13 +193,13 @@ AgentShield generates embeddable security badges that marketplaces can display:
 
 ### Markdown
 ```markdown
-[![AgentShield](https://agentshield.dev/badges/scan-id)](https://agentshield.dev/report/scan-id)
+[![AgentShield](https://agent-shield-production.up.railway.app/badges/scan-id)](https://agent-shield-production.up.railway.app/report/scan-id)
 ```
 
 ### HTML
 ```html
-<a href="https://agentshield.dev/report/scan-id">
-  <img src="https://agentshield.dev/badges/scan-id" alt="Security Badge" />
+<a href="https://agent-shield-production.up.railway.app/report/scan-id">
+  <img src="https://agent-shield-production.up.railway.app/badges/scan-id" alt="Security Badge" />
 </a>
 ```
 
@@ -277,7 +286,7 @@ PORT=3000
 DATABASE_PATH=./agent-shield.db
 
 # Security
-ALLOWED_ORIGINS=https://agentshield.dev,https://example.com
+ALLOWED_ORIGINS=https://agent-shield-production.up.railway.app,https://example.com
 
 # Rate Limiting (optional)
 API_RATE_LIMIT=100
@@ -303,7 +312,7 @@ docker run -d \
 AgentShield supports x402 protocol for AI-to-AI payments:
 
 ```bash
-curl https://agentshield.dev/discovery
+curl https://agent-shield-production.up.railway.app/discovery
 ```
 
 Returns service capabilities, pricing, and endpoint documentation for automated agent integration.
@@ -312,18 +321,18 @@ Returns service capabilities, pricing, and endpoint documentation for automated 
 
 ### Health Check
 ```bash
-curl https://agentshield.dev/health
+curl https://agent-shield-production.up.railway.app/health
 ```
 
 ### Platform Statistics
 ```bash
-curl https://agentshield.dev/stats
+curl https://agent-shield-production.up.railway.app/stats
 ```
 
 ### User Analytics (Pro+)
 ```bash
 curl -H "X-API-Key: ash_key" \
-     https://agentshield.dev/reports/analytics
+     https://agent-shield-production.up.railway.app/reports/analytics
 ```
 
 ## 🤝 Contributing
@@ -356,4 +365,4 @@ Built with ❤️ for the AI agent ecosystem. Positioning ourselves as **THE sec
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template/agent-shield)
 [![Run on Repl.it](https://repl.it/badge/github/SiamakSafari/agent-shield)](https://repl.it/github/SiamakSafari/agent-shield)
 
-**[🚀 Try AgentShield Now](https://agentshield.dev)**
+**[🚀 Try AgentShield Now](https://agent-shield-production.up.railway.app)**

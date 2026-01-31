@@ -55,13 +55,16 @@ function authenticateAPI(db) {
                             req.path === '/register/' || req.path === '/api/register/') && req.method === 'POST';
     const isRegisterPlans = (req.path === '/register/plans' || req.path === '/api/register/plans') && req.method === 'GET';
     
+    // Allow Stripe webhook without auth (Stripe signs these requests itself)
+    const isBillingWebhook = (req.path === '/billing/webhook' || req.path === '/api/billing/webhook') && req.method === 'POST';
+    
     // Allow scan endpoints without auth (free tier, IP rate-limited)
     const publicScanPaths = ['/scan', '/scan/', '/scan/url', '/scan/validate', '/scan/stats', '/scan/health',
                              '/api/scan', '/api/scan/', '/api/scan/url', '/api/scan/validate', '/api/scan/stats', '/api/scan/health'];
     const isPublicScan = publicScanPaths.includes(req.path);
     
     // For public endpoints and unauthenticated scans, set anonymous user and continue
-    if (isPublicEndpoint || isRegisterPost || isRegisterPlans || (isPublicScan && !apiKey)) {
+    if (isPublicEndpoint || isRegisterPost || isRegisterPlans || isBillingWebhook || (isPublicScan && !apiKey)) {
       req.user = {
         id: 'anonymous',
         plan: 'free',

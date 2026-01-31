@@ -19,6 +19,7 @@ const scanRoutes = require('./routes/scan');
 const reportRoutes = require('./routes/reports');
 const badgeRoutes = require('./routes/badges');
 const registerRoutes = require('./routes/register');
+const billingRoutes = require('./routes/billing');
 
 async function startServer() {
   // Initialize Express app
@@ -61,7 +62,12 @@ async function startServer() {
   // Compression
   app.use(compression());
 
-  // Body parsing middleware
+  // Stripe webhook needs raw body — mount BEFORE json parser
+  // The webhook route handler uses express.raw() internally
+  app.use('/billing/webhook', express.raw({ type: 'application/json' }));
+  app.use('/api/billing/webhook', express.raw({ type: 'application/json' }));
+
+  // Body parsing middleware (for all other routes)
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -108,6 +114,8 @@ async function startServer() {
   app.use('/api/badges', badgeRoutes);
   app.use('/register', registerRoutes);
   app.use('/api/register', registerRoutes);
+  app.use('/billing', billingRoutes);
+  app.use('/api/billing', billingRoutes);
 
   // Root endpoint - Landing page
   app.get('/', async (req, res) => {
@@ -295,6 +303,9 @@ async function startServer() {
         'GET /badges/:scanId',
         'POST /register',
         'GET /register/plans',
+        'POST /billing/checkout',
+        'GET /billing/status',
+        'GET /billing/portal',
         'GET /health',
         'GET /stats',
         'GET /discovery'

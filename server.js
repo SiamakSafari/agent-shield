@@ -98,10 +98,13 @@ async function startServer() {
   // Serve static files
   app.use(express.static(path.join(__dirname, 'public')));
 
-  // API Routes
+  // API Routes (both /scan and /api/scan work — we link /api/scan in marketing)
   app.use('/scan', scanRoutes);
+  app.use('/api/scan', scanRoutes);
   app.use('/report', reportRoutes);
+  app.use('/api/report', reportRoutes);
   app.use('/badges', badgeRoutes);
+  app.use('/api/badges', badgeRoutes);
 
   // Root endpoint - Landing page
   app.get('/', async (req, res) => {

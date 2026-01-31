@@ -50,8 +50,13 @@ function authenticateAPI(db) {
     const publicEndpoints = ['/', '/health', '/stats', '/discovery'];
     const isPublicEndpoint = publicEndpoints.includes(req.path);
     
-    // For public endpoints, set anonymous user and continue
-    if (isPublicEndpoint) {
+    // Allow scan endpoints without auth (free tier, IP rate-limited)
+    const publicScanPaths = ['/scan', '/scan/', '/scan/url', '/scan/validate', '/scan/stats', '/scan/health',
+                             '/api/scan', '/api/scan/', '/api/scan/url', '/api/scan/validate', '/api/scan/stats', '/api/scan/health'];
+    const isPublicScan = publicScanPaths.includes(req.path);
+    
+    // For public endpoints and unauthenticated scans, set anonymous user and continue
+    if (isPublicEndpoint || (isPublicScan && !apiKey)) {
       req.user = {
         id: 'anonymous',
         plan: 'free',
@@ -61,12 +66,13 @@ function authenticateAPI(db) {
       return next();
     }
 
-    // Require API key for protected endpoints
+    // If no API key and not a public/scan endpoint, require auth
     if (!apiKey) {
       return res.status(401).json({
         error: 'API key required',
-        message: 'Please provide an API key in the X-API-Key header or api_key query parameter',
-        documentation: 'https://github.com/SiamakSafari/agent-shield#authentication'
+        message: 'Please provide an API key in the X-API-Key header or api_key query parameter. Note: POST /scan is free and does not require authentication.',
+        documentation: 'https://github.com/SiamakSafari/agent-shield#authentication',
+        freeEndpoints: ['POST /scan', 'POST /scan/url', 'POST /scan/validate', 'GET /scan/stats', 'GET /scan/health']
       });
     }
 

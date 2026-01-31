@@ -1,36 +1,50 @@
-// SQLite database setup and operations for AgentShield
-const Database = require('better-sqlite3');
+// Database setup and operations for AgentShield
+// Supports Turso (libsql) with local SQLite fallback
+const { createClient } = require('@libsql/client');
 const path = require('path');
 const fs = require('fs');
 
 class AgentShieldDB {
-  constructor(dbPath = './agent-shield.db') {
-    this.dbPath = dbPath;
-    this.init();
+  constructor(options = {}) {
+    this.options = options;
+    this.db = null;
   }
 
-  init() {
-    // Ensure database directory exists
-    const dbDir = path.dirname(this.dbPath);
-    if (!fs.existsSync(dbDir)) {
-      fs.mkdirSync(dbDir, { recursive: true });
+  async init() {
+    const tursoUrl = process.env.TURSO_DATABASE_URL;
+    const tursoToken = process.env.TURSO_AUTH_TOKEN;
+
+    if (tursoUrl && tursoToken) {
+      // Use Turso remote database
+      this.db = createClient({
+        url: tursoUrl,
+        authToken: tursoToken,
+      });
+      console.log('📡 Connected to Turso database');
+    } else {
+      // Fall back to local SQLite file via libsql
+      const dbPath = this.options.dbPath || process.env.DATABASE_PATH || './agent-shield.db';
+      const dbDir = path.dirname(dbPath);
+      if (!fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
+      }
+      this.db = createClient({
+        url: `file:${dbPath}`,
+      });
+      console.log(`💾 Using local SQLite database: ${dbPath}`);
     }
 
-    this.db = new Database(this.dbPath);
-    this.db.pragma('journal_mode = WAL');
-    
-    this.createTables();
-    this.setupIndexes();
+    await this.createTables();
+    await this.setupIndexes();
   }
 
-  createTables() {
-    // Scan results table
-    this.db.exec(`
+  async createTables() {
+    await this.db.executeMultiple(`
       CREATE TABLE IF NOT EXISTS scans (
         id TEXT PRIMARY KEY,
         timestamp TEXT NOT NULL,
         source TEXT NOT NULL,
-        source_type TEXT NOT NULL, -- 'inline', 'url', 'github'
+        source_type TEXT NOT NULL,
         threat_level TEXT NOT NULL,
         trust_score INTEGER NOT NULL,
         badge TEXT NOT NULL,
@@ -46,11 +60,8 @@ class AgentShieldDB {
         ip_address TEXT,
         user_agent TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+      );
 
-    // Detailed findings table
-    this.db.exec(`
       CREATE TABLE IF NOT EXISTS findings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         scan_id TEXT NOT NULL,
@@ -63,11 +74,8 @@ class AgentShieldDB {
         remediation TEXT,
         pattern_id TEXT,
         FOREIGN KEY (scan_id) REFERENCES scans(id)
-      )
-    `);
+      );
 
-    // API usage tracking
-    this.db.exec(`
       CREATE TABLE IF NOT EXISTS api_usage (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         api_key TEXT,
@@ -79,26 +87,20 @@ class AgentShieldDB {
         response_time_ms INTEGER,
         status_code INTEGER,
         error_message TEXT
-      )
-    `);
+      );
 
-    // API keys and rate limiting
-    this.db.exec(`
       CREATE TABLE IF NOT EXISTS api_keys (
         key_id TEXT PRIMARY KEY,
         key_hash TEXT UNIQUE NOT NULL,
         user_id TEXT NOT NULL,
-        plan TEXT DEFAULT 'free', -- 'free', 'pro', 'enterprise'
+        plan TEXT DEFAULT 'free',
         daily_limit INTEGER DEFAULT 10,
         monthly_limit INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         last_used_at DATETIME,
         is_active BOOLEAN DEFAULT TRUE
-      )
-    `);
+      );
 
-    // Rate limiting tracking
-    this.db.exec(`
       CREATE TABLE IF NOT EXISTS rate_limits (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         api_key TEXT,
@@ -107,11 +109,8 @@ class AgentShieldDB {
         request_count INTEGER DEFAULT 1,
         window_start DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(api_key, ip_address, endpoint, window_start)
-      )
-    `);
+      );
 
-    // Statistics tracking
-    this.db.exec(`
       CREATE TABLE IF NOT EXISTS stats (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         date TEXT UNIQUE NOT NULL,
@@ -121,101 +120,118 @@ class AgentShieldDB {
         unique_users INTEGER DEFAULT 0,
         avg_trust_score REAL DEFAULT 0,
         avg_scan_duration_ms REAL DEFAULT 0
-      )
+      );
     `);
   }
 
-  setupIndexes() {
-    // Performance indexes
-    this.db.exec('CREATE INDEX IF NOT EXISTS idx_scans_timestamp ON scans(timestamp)');
-    this.db.exec('CREATE INDEX IF NOT EXISTS idx_scans_threat_level ON scans(threat_level)');
-    this.db.exec('CREATE INDEX IF NOT EXISTS idx_scans_user_id ON scans(user_id)');
-    this.db.exec('CREATE INDEX IF NOT EXISTS idx_findings_scan_id ON findings(scan_id)');
-    this.db.exec('CREATE INDEX IF NOT EXISTS idx_findings_severity ON findings(severity)');
-    this.db.exec('CREATE INDEX IF NOT EXISTS idx_api_usage_timestamp ON api_usage(timestamp)');
-    this.db.exec('CREATE INDEX IF NOT EXISTS idx_api_usage_api_key ON api_usage(api_key)');
-    this.db.exec('CREATE INDEX IF NOT EXISTS idx_rate_limits_api_key ON rate_limits(api_key)');
-    this.db.exec('CREATE INDEX IF NOT EXISTS idx_rate_limits_window ON rate_limits(window_start)');
+  async setupIndexes() {
+    await this.db.executeMultiple(`
+      CREATE INDEX IF NOT EXISTS idx_scans_timestamp ON scans(timestamp);
+      CREATE INDEX IF NOT EXISTS idx_scans_threat_level ON scans(threat_level);
+      CREATE INDEX IF NOT EXISTS idx_scans_user_id ON scans(user_id);
+      CREATE INDEX IF NOT EXISTS idx_findings_scan_id ON findings(scan_id);
+      CREATE INDEX IF NOT EXISTS idx_findings_severity ON findings(severity);
+      CREATE INDEX IF NOT EXISTS idx_api_usage_timestamp ON api_usage(timestamp);
+      CREATE INDEX IF NOT EXISTS idx_api_usage_api_key ON api_usage(api_key);
+      CREATE INDEX IF NOT EXISTS idx_rate_limits_api_key ON rate_limits(api_key);
+      CREATE INDEX IF NOT EXISTS idx_rate_limits_window ON rate_limits(window_start);
+    `);
+  }
+
+  // Helper: execute a query and return first row (like .get())
+  async get(sql, args = []) {
+    const result = await this.db.execute({ sql, args });
+    return result.rows.length > 0 ? result.rows[0] : null;
+  }
+
+  // Helper: execute a query and return all rows (like .all())
+  async all(sql, args = []) {
+    const result = await this.db.execute({ sql, args });
+    return result.rows;
+  }
+
+  // Helper: execute a statement (like .run())
+  async run(sql, args = []) {
+    const result = await this.db.execute({ sql, args });
+    return { changes: result.rowsAffected, lastInsertRowid: result.lastInsertRowid };
   }
 
   // Save scan result to database
-  saveScan(scanResult, metadata = {}) {
-    const insertScan = this.db.prepare(`
-      INSERT INTO scans (
-        id, timestamp, source, source_type, threat_level, trust_score, badge,
-        findings_count, critical_count, high_count, medium_count, low_count,
-        scan_duration_ms, lines_scanned, patterns_checked, user_id, ip_address, user_agent
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
+  async saveScan(scanResult, metadata = {}) {
+    const criticalCount = scanResult.findings.filter(f => f.severity === 'critical').length;
+    const highCount = scanResult.findings.filter(f => f.severity === 'high').length;
+    const mediumCount = scanResult.findings.filter(f => f.severity === 'medium').length;
+    const lowCount = scanResult.findings.filter(f => f.severity === 'low').length;
 
-    const insertFinding = this.db.prepare(`
-      INSERT INTO findings (
-        scan_id, severity, category, title, description, evidence, line_number, remediation, pattern_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
+    let sourceType = 'inline';
+    if (scanResult.source.startsWith('http')) {
+      sourceType = scanResult.source.includes('github.com') ? 'github' : 'url';
+    }
 
-    const transaction = this.db.transaction((result, meta) => {
-      const criticalCount = result.findings.filter(f => f.severity === 'critical').length;
-      const highCount = result.findings.filter(f => f.severity === 'high').length;
-      const mediumCount = result.findings.filter(f => f.severity === 'medium').length;
-      const lowCount = result.findings.filter(f => f.severity === 'low').length;
+    // Build batch of statements for transaction
+    const statements = [
+      {
+        sql: `INSERT INTO scans (
+          id, timestamp, source, source_type, threat_level, trust_score, badge,
+          findings_count, critical_count, high_count, medium_count, low_count,
+          scan_duration_ms, lines_scanned, patterns_checked, user_id, ip_address, user_agent
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          scanResult.scanId,
+          scanResult.timestamp,
+          scanResult.source,
+          sourceType,
+          scanResult.threatLevel,
+          scanResult.trustScore,
+          scanResult.badge,
+          scanResult.findings.length,
+          criticalCount,
+          highCount,
+          mediumCount,
+          lowCount,
+          scanResult.metadata?.scanDurationMs || null,
+          scanResult.metadata?.linesScanned || null,
+          scanResult.metadata?.patternsChecked || null,
+          metadata.userId || null,
+          metadata.ipAddress || null,
+          metadata.userAgent || null,
+        ],
+      },
+    ];
 
-      // Determine source type
-      let sourceType = 'inline';
-      if (result.source.startsWith('http')) {
-        sourceType = result.source.includes('github.com') ? 'github' : 'url';
-      }
-
-      insertScan.run(
-        result.scanId,
-        result.timestamp,
-        result.source,
-        sourceType,
-        result.threatLevel,
-        result.trustScore,
-        result.badge,
-        result.findings.length,
-        criticalCount,
-        highCount,
-        mediumCount,
-        lowCount,
-        result.metadata?.scanDurationMs,
-        result.metadata?.linesScanned,
-        result.metadata?.patternsChecked,
-        meta.userId,
-        meta.ipAddress,
-        meta.userAgent
-      );
-
-      // Save individual findings
-      result.findings.forEach(finding => {
-        insertFinding.run(
-          result.scanId,
+    // Add finding inserts
+    for (const finding of scanResult.findings) {
+      statements.push({
+        sql: `INSERT INTO findings (
+          scan_id, severity, category, title, description, evidence, line_number, remediation, pattern_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          scanResult.scanId,
           finding.severity,
           finding.category,
           finding.title,
           finding.description,
-          finding.evidence,
-          finding.line,
-          finding.remediation,
-          finding.patternId
-        );
+          finding.evidence || null,
+          finding.line || null,
+          finding.remediation || null,
+          finding.patternId || null,
+        ],
       });
-    });
+    }
 
-    transaction(scanResult, metadata);
-    this.updateDailyStats();
+    await this.db.batch(statements, 'write');
+    await this.updateDailyStats();
   }
 
   // Retrieve scan result by ID
-  getScan(scanId) {
-    const scanQuery = this.db.prepare('SELECT * FROM scans WHERE id = ?');
-    const findingsQuery = this.db.prepare('SELECT * FROM findings WHERE scan_id = ? ORDER BY severity, line_number');
-
-    const scan = scanQuery.get(scanId);
+  async getScan(scanId) {
+    const scan = await this.get('SELECT * FROM scans WHERE id = ?', [scanId]);
     if (!scan) return null;
 
-    const findings = findingsQuery.all(scanId);
+    const findings = await this.all(
+      'SELECT * FROM findings WHERE scan_id = ? ORDER BY severity, line_number',
+      [scanId]
+    );
 
     return {
       scanId: scan.id,
@@ -232,127 +248,125 @@ class AgentShieldDB {
         evidence: f.evidence,
         line: f.line_number,
         remediation: f.remediation,
-        patternId: f.pattern_id
+        patternId: f.pattern_id,
       })),
       metadata: {
         scanDurationMs: scan.scan_duration_ms,
         linesScanned: scan.lines_scanned,
-        patternsChecked: scan.patterns_checked
-      }
+        patternsChecked: scan.patterns_checked,
+      },
     };
   }
 
   // Get recent scans for a user
-  getUserScans(userId, limit = 50) {
-    const query = this.db.prepare(`
-      SELECT id, timestamp, source, threat_level, trust_score, badge, findings_count
-      FROM scans 
-      WHERE user_id = ? 
-      ORDER BY timestamp DESC 
-      LIMIT ?
-    `);
-    
-    return query.all(userId, limit);
+  async getUserScans(userId, limit = 50) {
+    return await this.all(
+      `SELECT id, timestamp, source, threat_level, trust_score, badge, findings_count
+       FROM scans
+       WHERE user_id = ?
+       ORDER BY timestamp DESC
+       LIMIT ?`,
+      [userId, limit]
+    );
   }
 
   // Get global statistics
-  getStats() {
+  async getStats() {
     const today = new Date().toISOString().split('T')[0];
-    const statsQuery = this.db.prepare('SELECT * FROM stats WHERE date = ?');
-    
-    let todayStats = statsQuery.get(today);
+    let todayStats = await this.get('SELECT * FROM stats WHERE date = ?', [today]);
+
     if (!todayStats) {
-      this.updateDailyStats();
-      todayStats = statsQuery.get(today);
+      await this.updateDailyStats();
+      todayStats = await this.get('SELECT * FROM stats WHERE date = ?', [today]);
     }
 
-    const totalStats = this.db.prepare(`
-      SELECT 
+    const totalStats = await this.get(`
+      SELECT
         COUNT(*) as total_scans,
         SUM(CASE WHEN threat_level != 'clean' THEN 1 ELSE 0 END) as threats_detected,
         SUM(CASE WHEN threat_level = 'clean' THEN 1 ELSE 0 END) as clean_skills,
         AVG(trust_score) as avg_trust_score,
         AVG(scan_duration_ms) as avg_scan_duration_ms
       FROM scans
-    `).get();
+    `);
 
     return {
       today: todayStats || {
         total_scans: 0,
         threats_detected: 0,
         clean_skills: 0,
-        avg_trust_score: 0
+        avg_trust_score: 0,
       },
-      allTime: totalStats
+      allTime: totalStats,
     };
   }
 
   // Update daily statistics
-  updateDailyStats() {
+  async updateDailyStats() {
     const today = new Date().toISOString().split('T')[0];
-    
-    const dailyStats = this.db.prepare(`
-      SELECT 
+
+    const dailyStats = await this.get(
+      `SELECT
         COUNT(*) as total_scans,
         SUM(CASE WHEN threat_level != 'clean' THEN 1 ELSE 0 END) as threats_detected,
         SUM(CASE WHEN threat_level = 'clean' THEN 1 ELSE 0 END) as clean_skills,
         COUNT(DISTINCT user_id) as unique_users,
         AVG(trust_score) as avg_trust_score,
         AVG(scan_duration_ms) as avg_scan_duration_ms
-      FROM scans 
-      WHERE DATE(created_at) = ?
-    `).get(today);
+      FROM scans
+      WHERE DATE(created_at) = ?`,
+      [today]
+    );
 
-    const upsertStats = this.db.prepare(`
-      INSERT INTO stats (date, total_scans, threats_detected, clean_skills, unique_users, avg_trust_score, avg_scan_duration_ms)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(date) DO UPDATE SET
-        total_scans = excluded.total_scans,
-        threats_detected = excluded.threats_detected,
-        clean_skills = excluded.clean_skills,
-        unique_users = excluded.unique_users,
-        avg_trust_score = excluded.avg_trust_score,
-        avg_scan_duration_ms = excluded.avg_scan_duration_ms
-    `);
-
-    upsertStats.run(
-      today,
-      dailyStats.total_scans || 0,
-      dailyStats.threats_detected || 0,
-      dailyStats.clean_skills || 0,
-      dailyStats.unique_users || 0,
-      dailyStats.avg_trust_score || 0,
-      dailyStats.avg_scan_duration_ms || 0
+    await this.run(
+      `INSERT INTO stats (date, total_scans, threats_detected, clean_skills, unique_users, avg_trust_score, avg_scan_duration_ms)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(date) DO UPDATE SET
+         total_scans = excluded.total_scans,
+         threats_detected = excluded.threats_detected,
+         clean_skills = excluded.clean_skills,
+         unique_users = excluded.unique_users,
+         avg_trust_score = excluded.avg_trust_score,
+         avg_scan_duration_ms = excluded.avg_scan_duration_ms`,
+      [
+        today,
+        dailyStats?.total_scans || 0,
+        dailyStats?.threats_detected || 0,
+        dailyStats?.clean_skills || 0,
+        dailyStats?.unique_users || 0,
+        dailyStats?.avg_trust_score || 0,
+        dailyStats?.avg_scan_duration_ms || 0,
+      ]
     );
   }
 
   // Log API usage
-  logAPIUsage(apiKey, endpoint, method, ipAddress, userAgent, responseTimeMs, statusCode, errorMessage = null) {
-    const insert = this.db.prepare(`
-      INSERT INTO api_usage (api_key, endpoint, method, ip_address, user_agent, response_time_ms, status_code, error_message)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    
-    insert.run(apiKey, endpoint, method, ipAddress, userAgent, responseTimeMs, statusCode, errorMessage);
+  async logAPIUsage(apiKey, endpoint, method, ipAddress, userAgent, responseTimeMs, statusCode, errorMessage = null) {
+    await this.run(
+      `INSERT INTO api_usage (api_key, endpoint, method, ip_address, user_agent, response_time_ms, status_code, error_message)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [apiKey, endpoint, method, ipAddress, userAgent, responseTimeMs, statusCode, errorMessage]
+    );
   }
 
   // Check rate limit
-  checkRateLimit(apiKey, ipAddress, endpoint, windowMinutes = 60, limit = 10) {
+  async checkRateLimit(apiKey, ipAddress, endpoint, windowMinutes = 60, limit = 10) {
     const windowStart = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString();
-    
-    const currentCount = this.db.prepare(`
-      SELECT COUNT(*) as count 
-      FROM api_usage 
-      WHERE (api_key = ? OR ip_address = ?) 
-        AND endpoint = ? 
-        AND timestamp > ?
-    `).get(apiKey, ipAddress, endpoint, windowStart);
+
+    const currentCount = await this.get(
+      `SELECT COUNT(*) as count
+       FROM api_usage
+       WHERE (api_key = ? OR ip_address = ?)
+         AND endpoint = ?
+         AND timestamp > ?`,
+      [apiKey, ipAddress, endpoint, windowStart]
+    );
 
     return {
       allowed: currentCount.count < limit,
       current: currentCount.count,
       limit: limit,
-      resetTime: new Date(Date.now() + windowMinutes * 60 * 1000)
+      resetTime: new Date(Date.now() + windowMinutes * 60 * 1000),
     };
   }
 

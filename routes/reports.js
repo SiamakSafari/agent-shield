@@ -19,7 +19,7 @@ router.get('/:scanId', async (req, res) => {
     }
 
     // Retrieve from database
-    const report = req.db?.getScan(scanId);
+    const report = await req.db?.getScan(scanId);
     
     if (!report) {
       return res.status(404).json({
@@ -75,7 +75,7 @@ router.get('/user/:userId', async (req, res) => {
       });
     }
 
-    const reports = req.db?.getUserScans(userId, parseInt(limit));
+    const reports = await req.db?.getUserScans(userId, parseInt(limit));
     
     if (!reports) {
       return res.json({
@@ -151,10 +151,10 @@ router.get('/analytics', async (req, res) => {
     const userId = req.user.id;
 
     // Get user analytics
-    const analytics = req.analytics?.getUserStats(userId, parseInt(days)) || {};
+    const analytics = await req.analytics?.getUserStats(userId, parseInt(days)) || {};
     
     // Get scan statistics
-    const scanStats = req.db?.getStats() || {};
+    const scanStats = await req.db?.getStats() || {};
     
     // Calculate trends
     const trends = calculateTrends(analytics.dailyUsage || []);
@@ -201,7 +201,7 @@ router.get('/export', async (req, res) => {
       });
     }
 
-    const reports = req.db?.getUserScans(userId || req.user?.id, 1000); // Max 1000 for export
+    const reports = await req.db?.getUserScans(userId || req.user?.id, 1000); // Max 1000 for export
     
     if (!reports || reports.length === 0) {
       return res.status(404).json({

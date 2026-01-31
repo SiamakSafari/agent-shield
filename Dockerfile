@@ -1,26 +1,5 @@
 # Production Dockerfile for AgentShield
-FROM node:18-alpine AS builder
-
-# Install build tools for native modules (sqlite3)
-RUN apk add --no-cache python3 make g++
-
-# Set working directory
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies
-RUN npm ci --omit=dev && npm cache clean --force
-
-# Copy application code
-COPY . .
-
-# Remove development files
-RUN rm -rf .git .gitignore .dockerignore README.md
-
-# Production stage
-FROM node:18-alpine AS production
+FROM node:18-alpine
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
@@ -29,8 +8,17 @@ RUN addgroup -g 1001 -S nodejs && \
 # Set working directory
 WORKDIR /app
 
-# Copy built application
-COPY --from=builder --chown=agentshield:nodejs /app .
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies (no native modules needed)
+RUN npm ci --omit=dev && npm cache clean --force
+
+# Copy application code
+COPY . .
+
+# Remove development files
+RUN rm -rf .git .gitignore .dockerignore README.md
 
 # Create directories with proper permissions
 RUN mkdir -p /app/data && \

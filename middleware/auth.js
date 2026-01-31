@@ -83,11 +83,12 @@ function authenticateAPI(db) {
       const keyHash = hashAPIKey(apiKey);
       
       // Look up API key in database
-      const apiKeyRecord = db.db.prepare(`
-        SELECT key_id, user_id, plan, daily_limit, monthly_limit, is_active, last_used_at
-        FROM api_keys 
-        WHERE key_hash = ? AND is_active = TRUE
-      `).get(keyHash);
+      const apiKeyRecord = await db.get(
+        `SELECT key_id, user_id, plan, daily_limit, monthly_limit, is_active, last_used_at
+         FROM api_keys
+         WHERE key_hash = ? AND is_active = TRUE`,
+        [keyHash]
+      );
 
       if (!apiKeyRecord) {
         return res.status(401).json({
@@ -97,8 +98,10 @@ function authenticateAPI(db) {
       }
 
       // Update last used timestamp
-      db.db.prepare('UPDATE api_keys SET last_used_at = CURRENT_TIMESTAMP WHERE key_id = ?')
-        .run(apiKeyRecord.key_id);
+      await db.run(
+        'UPDATE api_keys SET last_used_at = CURRENT_TIMESTAMP WHERE key_id = ?',
+        [apiKeyRecord.key_id]
+      );
 
       // Check usage limits
       const usageCheck = await checkUsageLimits(db, apiKeyRecord);
@@ -167,18 +170,20 @@ async function checkUsageLimits(db, apiKeyRecord) {
   const thisMonth = now.toISOString().substring(0, 7); // YYYY-MM
 
   // Get today's usage
-  const dailyUsage = db.db.prepare(`
-    SELECT COUNT(*) as count 
-    FROM api_usage 
-    WHERE api_key = ? AND DATE(timestamp) = ?
-  `).get(apiKeyRecord.key_id, today);
+  const dailyUsage = await db.get(
+    `SELECT COUNT(*) as count
+     FROM api_usage
+     WHERE api_key = ? AND DATE(timestamp) = ?`,
+    [apiKeyRecord.key_id, today]
+  );
 
   // Get this month's usage
-  const monthlyUsage = db.db.prepare(`
-    SELECT COUNT(*) as count 
-    FROM api_usage 
-    WHERE api_key = ? AND strftime('%Y-%m', timestamp) = ?
-  `).get(apiKeyRecord.key_id, thisMonth);
+  const monthlyUsage = await db.get(
+    `SELECT COUNT(*) as count
+     FROM api_usage
+     WHERE api_key = ? AND strftime('%Y-%m', timestamp) = ?`,
+    [apiKeyRecord.key_id, thisMonth]
+  );
 
   // Check daily limit
   if (apiKeyRecord.daily_limit > 0 && dailyUsage.count >= apiKeyRecord.daily_limit) {
@@ -228,25 +233,17 @@ function getPlanSuggestion(feature) {
 }
 
 // Create new API key
-function createAPIKey(db, userId, plan = 'free') {
+async function createAPIKey(db, userId, plan = 'free') {
   const apiKey = generateAPIKey();
   const keyHash = hashAPIKey(apiKey);
   const keyId = crypto.randomUUID();
   
   const planConfig = API_PLANS[plan] || API_PLANS.free;
   
-  const insert = db.db.prepare(`
-    INSERT INTO api_keys (key_id, key_hash, user_id, plan, daily_limit, monthly_limit)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
-  
-  insert.run(
-    keyId,
-    keyHash,
-    userId,
-    plan,
-    planConfig.dailyLimit,
-    planConfig.monthlyLimit
+  await db.run(
+    `INSERT INTO api_keys (key_id, key_hash, user_id, plan, daily_limit, monthly_limit)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [keyId, keyHash, userId, plan, planConfig.dailyLimit, planConfig.monthlyLimit]
   );
 
   return {
@@ -261,27 +258,25 @@ function createAPIKey(db, userId, plan = 'free') {
 }
 
 // Revoke API key
-function revokeAPIKey(db, keyId, userId) {
-  const update = db.db.prepare(`
-    UPDATE api_keys 
-    SET is_active = FALSE 
-    WHERE key_id = ? AND user_id = ?
-  `);
-  
-  const result = update.run(keyId, userId);
+async function revokeAPIKey(db, keyId, userId) {
+  const result = await db.run(
+    `UPDATE api_keys
+     SET is_active = FALSE
+     WHERE key_id = ? AND user_id = ?`,
+    [keyId, userId]
+  );
   return result.changes > 0;
 }
 
 // List API keys for user
-function listAPIKeys(db, userId) {
-  const query = db.db.prepare(`
-    SELECT key_id, plan, daily_limit, monthly_limit, created_at, last_used_at, is_active
-    FROM api_keys 
-    WHERE user_id = ?
-    ORDER BY created_at DESC
-  `);
-  
-  return query.all(userId);
+async function listAPIKeys(db, userId) {
+  return await db.all(
+    `SELECT key_id, plan, daily_limit, monthly_limit, created_at, last_used_at, is_active
+     FROM api_keys
+     WHERE user_id = ?
+     ORDER BY created_at DESC`,
+    [userId]
+  );
 }
 
 module.exports = {

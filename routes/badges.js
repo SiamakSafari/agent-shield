@@ -25,7 +25,7 @@ router.get('/:scanId', badgeRateLimit, async (req, res) => {
     }
 
     // Retrieve scan result from database
-    const scanResult = req.db?.getScan(scanId);
+    const scanResult = await req.db?.getScan(scanId);
     
     if (!scanResult) {
       return res.status(404).json({
@@ -75,7 +75,7 @@ router.get('/:scanId/all', badgeRateLimit, async (req, res) => {
     }
 
     // Retrieve scan result from database
-    const scanResult = req.db?.getScan(scanId);
+    const scanResult = await req.db?.getScan(scanId);
     
     if (!scanResult) {
       return res.status(404).json({
@@ -135,7 +135,7 @@ router.get('/:scanId/embed', async (req, res) => {
     }
 
     // Retrieve scan result
-    const scanResult = req.db?.getScan(scanId);
+    const scanResult = await req.db?.getScan(scanId);
     
     if (!scanResult) {
       return res.status(404).json({

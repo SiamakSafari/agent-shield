@@ -180,11 +180,12 @@ function dailyQuotaCheck(db) {
     try {
       const today = new Date().toISOString().split('T')[0];
       
-      const dailyUsage = db.db.prepare(`
-        SELECT COUNT(*) as count 
-        FROM api_usage 
-        WHERE api_key = ? AND DATE(timestamp) = ?
-      `).get(req.user.keyId, today);
+      const dailyUsage = await db.get(
+        `SELECT COUNT(*) as count
+         FROM api_usage
+         WHERE api_key = ? AND DATE(timestamp) = ?`,
+        [req.user.keyId, today]
+      );
 
       if (dailyUsage.count >= req.user.limits.daily) {
         const tomorrow = new Date();
@@ -226,13 +227,14 @@ function abuseDetection(db) {
       const last5Minutes = new Date(Date.now() - 5 * 60 * 1000).toISOString();
       
       // Check for excessive failed requests
-      const failedRequests = db.db.prepare(`
-        SELECT COUNT(*) as count 
-        FROM api_usage 
-        WHERE (api_key = ? OR ip_address = ?) 
-          AND timestamp > ? 
-          AND status_code >= 400
-      `).get(identifier, req.ip, last5Minutes);
+      const failedRequests = await db.get(
+        `SELECT COUNT(*) as count
+         FROM api_usage
+         WHERE (api_key = ? OR ip_address = ?)
+           AND timestamp > ?
+           AND status_code >= 400`,
+        [identifier, req.ip, last5Minutes]
+      );
 
       if (failedRequests.count > 20) {
         return res.status(429).json({
@@ -249,13 +251,14 @@ function abuseDetection(db) {
           .update(JSON.stringify(req.body))
           .digest('hex');
 
-        const recentSimilar = db.db.prepare(`
-          SELECT COUNT(*) as count 
-          FROM api_usage 
-          WHERE (api_key = ? OR ip_address = ?) 
-            AND timestamp > ?
-            AND error_message LIKE ?
-        `).get(identifier, req.ip, last5Minutes, `%${bodyHash.substring(0, 8)}%`);
+        const recentSimilar = await db.get(
+          `SELECT COUNT(*) as count
+           FROM api_usage
+           WHERE (api_key = ? OR ip_address = ?)
+             AND timestamp > ?
+             AND error_message LIKE ?`,
+          [identifier, req.ip, last5Minutes, `%${bodyHash.substring(0, 8)}%`]
+        );
 
         if (recentSimilar.count > 10) {
           return res.status(429).json({

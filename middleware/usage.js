@@ -14,9 +14,11 @@ function trackUsage(db) {
       // Call original end function
       originalEnd.call(this, chunk, encoding);
       
-      // Log usage after response is sent (non-blocking)
+      // Log usage after response is sent (non-blocking, async fire-and-forget)
       setImmediate(() => {
-        logRequest(db, req, res, startTime);
+        logRequest(db, req, res, startTime).catch(err => {
+          console.error('Error logging request:', err);
+        });
       });
     };
     
@@ -24,25 +26,21 @@ function trackUsage(db) {
   };
 }
 
-// Log individual request
-function logRequest(db, req, res, startTime) {
-  try {
-    const responseTime = Date.now() - startTime;
-    const endpoint = normalizeEndpoint(req.path);
-    
-    db.logAPIUsage(
-      req.user?.keyId || null,
-      endpoint,
-      req.method,
-      getClientIP(req),
-      req.get('User-Agent') || '',
-      responseTime,
-      res.statusCode,
-      res.statusCode >= 400 ? getErrorMessage(res) : null
-    );
-  } catch (error) {
-    console.error('Error logging request:', error);
-  }
+// Log individual request (async)
+async function logRequest(db, req, res, startTime) {
+  const responseTime = Date.now() - startTime;
+  const endpoint = normalizeEndpoint(req.path);
+  
+  await db.logAPIUsage(
+    req.user?.keyId || null,
+    endpoint,
+    req.method,
+    getClientIP(req),
+    req.get('User-Agent') || '',
+    responseTime,
+    res.statusCode,
+    res.statusCode >= 400 ? getErrorMessage(res) : null
+  );
 }
 
 // Normalize endpoints for analytics (group similar endpoints)
@@ -66,8 +64,6 @@ function getClientIP(req) {
 
 // Extract error message from response
 function getErrorMessage(res) {
-  // This is a simplified version - in production you might want to capture
-  // more detailed error information from the response body
   if (res.statusCode >= 500) {
     return 'Internal server error';
   } else if (res.statusCode === 429) {
@@ -87,7 +83,7 @@ function getErrorMessage(res) {
 // Analytics middleware for generating usage reports
 function analyticsMiddleware(db) {
   return (req, res, next) => {
-    // Add analytics helper functions to request object
+    // Add analytics helper functions to request object (all async)
     req.analytics = {
       getUserStats: (userId, days = 30) => getUserStats(db, userId, days),
       getEndpointStats: (endpoint, days = 30) => getEndpointStats(db, endpoint, days),
@@ -100,11 +96,11 @@ function analyticsMiddleware(db) {
 }
 
 // Get user-specific usage statistics
-function getUserStats(db, userId, days = 30) {
+async function getUserStats(db, userId, days = 30) {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
   
-  const stats = db.db.prepare(`
-    SELECT 
+  const stats = await db.get(
+    `SELECT 
       COUNT(*) as total_requests,
       AVG(response_time_ms) as avg_response_time,
       COUNT(CASE WHEN status_code < 400 THEN 1 END) as successful_requests,
@@ -114,11 +110,12 @@ function getUserStats(db, userId, days = 30) {
     FROM api_usage 
     WHERE api_key IN (
       SELECT key_id FROM api_keys WHERE user_id = ?
-    ) AND timestamp > ?
-  `).get(userId, since);
+    ) AND timestamp > ?`,
+    [userId, since]
+  );
 
-  const dailyUsage = db.db.prepare(`
-    SELECT 
+  const dailyUsage = await db.all(
+    `SELECT 
       DATE(timestamp) as date,
       COUNT(*) as requests,
       AVG(response_time_ms) as avg_response_time
@@ -127,11 +124,12 @@ function getUserStats(db, userId, days = 30) {
       SELECT key_id FROM api_keys WHERE user_id = ?
     ) AND timestamp > ?
     GROUP BY DATE(timestamp)
-    ORDER BY date DESC
-  `).all(userId, since);
+    ORDER BY date DESC`,
+    [userId, since]
+  );
 
-  const endpointBreakdown = db.db.prepare(`
-    SELECT 
+  const endpointBreakdown = await db.all(
+    `SELECT 
       endpoint,
       COUNT(*) as requests,
       AVG(response_time_ms) as avg_response_time
@@ -141,8 +139,9 @@ function getUserStats(db, userId, days = 30) {
     ) AND timestamp > ?
     GROUP BY endpoint
     ORDER BY requests DESC
-    LIMIT 10
-  `).all(userId, since);
+    LIMIT 10`,
+    [userId, since]
+  );
 
   return {
     summary: stats,
@@ -152,11 +151,11 @@ function getUserStats(db, userId, days = 30) {
 }
 
 // Get endpoint-specific statistics
-function getEndpointStats(db, endpoint, days = 30) {
+async function getEndpointStats(db, endpoint, days = 30) {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
   
-  const stats = db.db.prepare(`
-    SELECT 
+  const stats = await db.get(
+    `SELECT 
       COUNT(*) as total_requests,
       AVG(response_time_ms) as avg_response_time,
       MIN(response_time_ms) as min_response_time,
@@ -165,19 +164,21 @@ function getEndpointStats(db, endpoint, days = 30) {
       COUNT(CASE WHEN status_code >= 400 THEN 1 END) as failed_requests,
       COUNT(DISTINCT api_key) as unique_users
     FROM api_usage 
-    WHERE endpoint = ? AND timestamp > ?
-  `).get(endpoint, since);
+    WHERE endpoint = ? AND timestamp > ?`,
+    [endpoint, since]
+  );
 
-  const hourlyPattern = db.db.prepare(`
-    SELECT 
+  const hourlyPattern = await db.all(
+    `SELECT 
       strftime('%H', timestamp) as hour,
       COUNT(*) as requests,
       AVG(response_time_ms) as avg_response_time
     FROM api_usage 
     WHERE endpoint = ? AND timestamp > ?
     GROUP BY strftime('%H', timestamp)
-    ORDER BY hour
-  `).all(endpoint, since);
+    ORDER BY hour`,
+    [endpoint, since]
+  );
 
   return {
     summary: stats,
@@ -186,11 +187,11 @@ function getEndpointStats(db, endpoint, days = 30) {
 }
 
 // Get system-wide statistics
-function getSystemStats(db, days = 30) {
+async function getSystemStats(db, days = 30) {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
   
-  const overview = db.db.prepare(`
-    SELECT 
+  const overview = await db.get(
+    `SELECT 
       COUNT(*) as total_requests,
       COUNT(DISTINCT api_key) as active_users,
       COUNT(DISTINCT ip_address) as unique_ips,
@@ -198,11 +199,12 @@ function getSystemStats(db, days = 30) {
       COUNT(CASE WHEN status_code < 400 THEN 1 END) as successful_requests,
       COUNT(CASE WHEN status_code >= 400 THEN 1 END) as failed_requests
     FROM api_usage 
-    WHERE timestamp > ?
-  `).get(since);
+    WHERE timestamp > ?`,
+    [since]
+  );
 
-  const dailyTrends = db.db.prepare(`
-    SELECT 
+  const dailyTrends = await db.all(
+    `SELECT 
       DATE(timestamp) as date,
       COUNT(*) as total_requests,
       COUNT(DISTINCT api_key) as active_users,
@@ -211,11 +213,12 @@ function getSystemStats(db, days = 30) {
     FROM api_usage 
     WHERE timestamp > ?
     GROUP BY DATE(timestamp)
-    ORDER BY date DESC
-  `).all(since);
+    ORDER BY date DESC`,
+    [since]
+  );
 
-  const topEndpoints = db.db.prepare(`
-    SELECT 
+  const topEndpoints = await db.all(
+    `SELECT 
       endpoint,
       COUNT(*) as requests,
       AVG(response_time_ms) as avg_response_time,
@@ -224,21 +227,23 @@ function getSystemStats(db, days = 30) {
     WHERE timestamp > ?
     GROUP BY endpoint
     ORDER BY requests DESC
-    LIMIT 20
-  `).all(since);
+    LIMIT 20`,
+    [since]
+  );
 
-  const planUsage = db.db.prepare(`
-    SELECT 
+  const planUsage = await db.all(
+    `SELECT 
       ak.plan,
-      COUNT(au.*) as requests,
+      COUNT(*) as requests,
       COUNT(DISTINCT ak.key_id) as active_keys,
       AVG(au.response_time_ms) as avg_response_time
     FROM api_usage au
     JOIN api_keys ak ON au.api_key = ak.key_id
     WHERE au.timestamp > ?
     GROUP BY ak.plan
-    ORDER BY requests DESC
-  `).all(since);
+    ORDER BY requests DESC`,
+    [since]
+  );
 
   return {
     overview: overview,
@@ -249,11 +254,11 @@ function getSystemStats(db, days = 30) {
 }
 
 // Get error analysis
-function getErrorAnalysis(db, days = 7) {
+async function getErrorAnalysis(db, days = 7) {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
   
-  const errorBreakdown = db.db.prepare(`
-    SELECT 
+  const errorBreakdown = await db.all(
+    `SELECT 
       status_code,
       error_message,
       COUNT(*) as count,
@@ -263,22 +268,24 @@ function getErrorAnalysis(db, days = 7) {
     WHERE status_code >= 400 AND timestamp > ?
     GROUP BY status_code, error_message
     ORDER BY count DESC
-    LIMIT 50
-  `).all(since);
+    LIMIT 50`,
+    [since]
+  );
 
-  const errorTrends = db.db.prepare(`
-    SELECT 
+  const errorTrends = await db.all(
+    `SELECT 
       DATE(timestamp) as date,
       status_code,
       COUNT(*) as count
     FROM api_usage 
     WHERE status_code >= 400 AND timestamp > ?
     GROUP BY DATE(timestamp), status_code
-    ORDER BY date DESC, count DESC
-  `).all(since);
+    ORDER BY date DESC, count DESC`,
+    [since]
+  );
 
-  const slowQueries = db.db.prepare(`
-    SELECT 
+  const slowQueries = await db.all(
+    `SELECT 
       endpoint,
       method,
       AVG(response_time_ms) as avg_response_time,
@@ -288,8 +295,9 @@ function getErrorAnalysis(db, days = 7) {
     WHERE timestamp > ? AND response_time_ms > 1000
     GROUP BY endpoint, method
     ORDER BY avg_response_time DESC
-    LIMIT 20
-  `).all(since);
+    LIMIT 20`,
+    [since]
+  );
 
   return {
     errorBreakdown: errorBreakdown,
@@ -313,8 +321,6 @@ function securityMonitoring(db) {
         endpoint: req.path,
         apiKey: req.user?.keyId
       });
-      
-      // Could implement automatic blocking here for severe patterns
     }
     
     next();

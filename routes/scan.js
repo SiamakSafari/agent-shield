@@ -47,7 +47,7 @@ router.post('/', scanRateLimit, async (req, res) => {
 
     // Save to database
     if (req.db) {
-      req.db.saveScan(result, {
+      await req.db.saveScan(result, {
         userId: req.user?.id || 'anonymous',
         ipAddress: req.ip,
         userAgent: req.get('User-Agent')
@@ -113,15 +113,15 @@ router.post('/batch', batchScanRateLimit, requireFeature('batch-scan'), async (r
     
     // Save individual scans to database
     if (req.db && result.results) {
-      result.results.forEach(scanResult => {
+      for (const scanResult of result.results) {
         if (!scanResult.error) {
-          req.db.saveScan(scanResult, {
+          await req.db.saveScan(scanResult, {
             userId: req.user?.id || 'anonymous',
             ipAddress: req.ip,
             userAgent: req.get('User-Agent')
           });
         }
-      });
+      }
     }
 
     // Add batch performance metrics
@@ -178,7 +178,7 @@ router.post('/url', scanRateLimit, async (req, res) => {
 
     // Save to database
     if (req.db) {
-      req.db.saveScan(result, {
+      await req.db.saveScan(result, {
         userId: req.user?.id || 'anonymous',
         ipAddress: req.ip,
         userAgent: req.get('User-Agent')

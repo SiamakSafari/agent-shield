@@ -247,7 +247,7 @@ const SECURITY_PATTERNS = {
     },
     {
       id: 'logging-disabling',
-      pattern: /(?:console\.log\s*=|log.*?=.*?null|>/dev/null|2>&1|silence|quiet.*?true)/gi,
+      pattern: /(?:console\.log\s*=|log.*?=.*?null|\/dev\/null|2>&1|silence|quiet.*?true)/gi,
       severity: 'medium',
       category: 'suspicious-behavior',
       title: 'Logging suppression detected',

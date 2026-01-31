@@ -3,28 +3,5 @@ builder = "dockerfile"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "node server.js"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
-
-[env]
-NODE_ENV = "production"
-PORT = "3000"
-
-# Database will be automatically persisted in Railway's volume storage
-DATABASE_PATH = "/app/data/agent-shield.db"
-
-# CORS origins (comma-separated)
-# ALLOWED_ORIGINS = "https://agentshield.dev,https://www.agentshield.dev"
-
-# Rate limiting
-# API_RATE_LIMIT = "100"
-
-# Optional: Custom domain configuration
-# CUSTOM_DOMAIN = "agentshield.dev"
-
-[healthcheck]
-path = "/health"
-timeout = 10
-interval = 30
-restart_limit = 3

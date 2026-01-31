@@ -18,6 +18,7 @@ const { trackUsage, analyticsMiddleware, securityMonitoring } = require('./middl
 const scanRoutes = require('./routes/scan');
 const reportRoutes = require('./routes/reports');
 const badgeRoutes = require('./routes/badges');
+const registerRoutes = require('./routes/register');
 
 async function startServer() {
   // Initialize Express app
@@ -105,6 +106,8 @@ async function startServer() {
   app.use('/api/report', reportRoutes);
   app.use('/badges', badgeRoutes);
   app.use('/api/badges', badgeRoutes);
+  app.use('/register', registerRoutes);
+  app.use('/api/register', registerRoutes);
 
   // Root endpoint - Landing page
   app.get('/', async (req, res) => {
@@ -290,6 +293,8 @@ async function startServer() {
         'POST /scan/batch', 
         'GET /report/:scanId',
         'GET /badges/:scanId',
+        'POST /register',
+        'GET /register/plans',
         'GET /health',
         'GET /stats',
         'GET /discovery'

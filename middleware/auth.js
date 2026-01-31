@@ -50,13 +50,18 @@ function authenticateAPI(db) {
     const publicEndpoints = ['/', '/health', '/stats', '/discovery'];
     const isPublicEndpoint = publicEndpoints.includes(req.path);
     
+    // Allow registration endpoints without auth (POST /register creates accounts)
+    const isRegisterPost = (req.path === '/register' || req.path === '/api/register' ||
+                            req.path === '/register/' || req.path === '/api/register/') && req.method === 'POST';
+    const isRegisterPlans = (req.path === '/register/plans' || req.path === '/api/register/plans') && req.method === 'GET';
+    
     // Allow scan endpoints without auth (free tier, IP rate-limited)
     const publicScanPaths = ['/scan', '/scan/', '/scan/url', '/scan/validate', '/scan/stats', '/scan/health',
                              '/api/scan', '/api/scan/', '/api/scan/url', '/api/scan/validate', '/api/scan/stats', '/api/scan/health'];
     const isPublicScan = publicScanPaths.includes(req.path);
     
     // For public endpoints and unauthenticated scans, set anonymous user and continue
-    if (isPublicEndpoint || (isPublicScan && !apiKey)) {
+    if (isPublicEndpoint || isRegisterPost || isRegisterPlans || (isPublicScan && !apiKey)) {
       req.user = {
         id: 'anonymous',
         plan: 'free',

@@ -1,5 +1,5 @@
 // SQLite database setup and operations for AgentShield
-const Database = require('better-sqlite3');
+const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 

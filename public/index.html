@@ -595,6 +595,7 @@
             <a href="#pricing">Pricing</a>
             <a href="/blog">Blog</a>
             <a href="/discovery">API Docs</a>
+            <a href="#shield-score">Shield Score</a>
             <a href="#demo" class="nav-cta">Scan Now</a>
         </div>
         <button class="mobile-menu-btn" onclick="document.querySelector('.nav-links').style.display = document.querySelector('.nav-links').style.display === 'flex' ? 'none' : 'flex'" aria-label="Menu">☰</button>
@@ -863,6 +864,47 @@
     </div>
 </section>
 
+<!-- SHIELD SCORE -->
+<section id="shield-score" style="padding: 100px 24px;">
+    <div class="demo-section">
+        <div class="section-center">
+            <span class="section-label">🏆 Shield Score</span>
+            <h2 class="section-title">Know your security posture</h2>
+            <p class="section-desc">Paste your skill URLs, get an instant aggregate Shield Score and an embeddable badge. Show the world your agent is safe.</p>
+        </div>
+        <div class="demo-container">
+            <div style="margin-bottom: 12px;">
+                <textarea id="shield-urls" rows="3" class="demo-input" style="width:100%;resize:vertical;font-size:0.9rem;" placeholder="Paste skill URLs (one per line or comma-separated)&#10;https://example.com/SKILL.md&#10;https://github.com/user/agent-skill"></textarea>
+            </div>
+            <div style="display:flex;gap:12px;margin-bottom:24px;">
+                <button class="demo-btn" id="shield-btn" onclick="runShieldScore()" style="flex:1;">Get Shield Score</button>
+                <a href="/api/shield-score/leaderboard" class="btn btn-secondary" style="padding:14px 20px;font-size:0.9rem;text-align:center;">🏅 Leaderboard</a>
+            </div>
+
+            <div class="demo-loading" id="shield-loading">
+                <div class="spinner"></div>
+                <p>Scanning skills &amp; calculating Shield Score...</p>
+            </div>
+            <div class="demo-error" id="shield-error"></div>
+
+            <div id="shield-result" style="display:none;">
+                <!-- Score card -->
+                <div style="background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);padding:28px;text-align:center;margin-bottom:16px;" id="shield-score-card">
+                    <div style="font-size:3.5rem;font-weight:900;font-family:'JetBrains Mono',monospace;margin-bottom:4px;" id="shield-score-value">—</div>
+                    <div style="font-size:1.1rem;font-weight:600;margin-bottom:16px;" id="shield-badge-level">—</div>
+                    <div id="shield-badge-embed" style="margin-bottom:12px;"></div>
+                    <div style="font-size:0.8rem;color:var(--text-muted);" id="shield-meta"></div>
+                </div>
+                <!-- Per-skill breakdown -->
+                <div style="background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+                    <div style="padding:16px 20px;border-bottom:1px solid var(--border);font-weight:600;font-size:0.9rem;">Skill Breakdown</div>
+                    <ul id="shield-skills-list" style="list-style:none;padding:0;margin:0;"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- CTA -->
 <div class="cta-section">
     <h2>Protect your agents today</h2>
@@ -977,6 +1019,81 @@ async function runScan() {
 document.getElementById('scan-url').addEventListener('keydown', e => {
     if (e.key === 'Enter') runScan();
 });
+
+// ── Shield Score Demo ─────────────────────────────────────────────
+async function runShieldScore() {
+    const textarea = document.getElementById('shield-urls');
+    const btn = document.getElementById('shield-btn');
+    const loading = document.getElementById('shield-loading');
+    const error = document.getElementById('shield-error');
+    const result = document.getElementById('shield-result');
+
+    const raw = textarea.value.trim();
+    if (!raw) { textarea.focus(); return; }
+
+    // Parse URLs: split on newlines and commas
+    const skills = raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+    if (skills.length === 0) { textarea.focus(); return; }
+
+    error.classList.remove('visible');
+    result.style.display = 'none';
+    loading.classList.add('visible');
+    btn.disabled = true;
+    btn.textContent = 'Scanning...';
+
+    try {
+        const res = await fetch('/api/shield-score?skills=' + encodeURIComponent(skills.join(',')));
+        const data = await res.json();
+        loading.classList.remove('visible');
+
+        if (!res.ok) {
+            error.textContent = data.error || 'Shield Score calculation failed.';
+            error.classList.add('visible');
+            return;
+        }
+
+        const score = data.shieldScore;
+        const colorMap = { green: 'var(--green)', blue: 'var(--accent)', orange: 'var(--orange)', red: 'var(--red)' };
+        const scoreColor = colorMap[data.badgeColor] || 'var(--text-primary)';
+
+        document.getElementById('shield-score-value').textContent = score;
+        document.getElementById('shield-score-value').style.color = scoreColor;
+        document.getElementById('shield-badge-level').textContent = data.badgeLevel;
+        document.getElementById('shield-badge-level').style.color = scoreColor;
+
+        document.getElementById('shield-badge-embed').innerHTML =
+            `<img src="${data.badgeUrl}" alt="Shield Score ${score}" style="height:28px;">`;
+
+        document.getElementById('shield-meta').textContent =
+            `${data.skillsScanned} skill(s) scanned · ${data.skillsSuccessful} succeeded · ${data.skillsFailed} failed`;
+
+        // Skill breakdown
+        const list = document.getElementById('shield-skills-list');
+        list.innerHTML = '';
+        (data.skills || []).forEach(sk => {
+            const li = document.createElement('li');
+            li.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid var(--border);font-size:0.9rem;';
+            const sColor = sk.error ? 'var(--red)' :
+                sk.score >= 80 ? 'var(--green)' :
+                sk.score >= 60 ? 'var(--accent)' :
+                sk.score >= 40 ? 'var(--orange)' : 'var(--red)';
+            li.innerHTML = `
+                <span style="font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%;">${sk.url}</span>
+                <span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:${sColor};">${sk.error ? 'ERR' : sk.score + '/100'}</span>`;
+            list.appendChild(li);
+        });
+
+        result.style.display = 'block';
+        result.style.animation = 'fadeIn 0.3s ease';
+    } catch (e) {
+        loading.classList.remove('visible');
+        error.textContent = 'Network error. Please try again.';
+        error.classList.add('visible');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Get Shield Score';
+    }
+}
 </script>
 
 </body>

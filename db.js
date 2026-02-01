@@ -179,6 +179,16 @@ class AgentShieldDB {
         created_at TEXT NOT NULL,
         FOREIGN KEY (monitor_id) REFERENCES monitors(id)
       );
+
+      CREATE TABLE IF NOT EXISTS shield_scores (
+        agent_id TEXT PRIMARY KEY,
+        api_key TEXT,
+        score INTEGER NOT NULL DEFAULT 0,
+        badge_level TEXT NOT NULL DEFAULT 'At Risk',
+        skills_scanned INTEGER NOT NULL DEFAULT 0,
+        skill_urls TEXT,
+        last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
     `);
   }
 
@@ -200,6 +210,8 @@ class AgentShieldDB {
       CREATE INDEX IF NOT EXISTS idx_alerts_monitor_id ON alerts(monitor_id);
       CREATE INDEX IF NOT EXISTS idx_alerts_created_at ON alerts(created_at);
       CREATE INDEX IF NOT EXISTS idx_webhooks_monitor_id ON webhooks(monitor_id);
+      CREATE INDEX IF NOT EXISTS idx_shield_scores_score ON shield_scores(score DESC);
+      CREATE INDEX IF NOT EXISTS idx_shield_scores_last_updated ON shield_scores(last_updated);
     `);
   }
 

@@ -87,6 +87,23 @@ async function startServer() {
   // Security monitoring
   app.use(securityMonitoring(db));
 
+  // Serve static files (before auth — public content)
+  app.use(express.static(path.join(__dirname, 'public')));
+
+  // Blog routes - serve static HTML articles (before auth — public content)
+  app.get('/blog', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'blog', 'index.html'));
+  });
+  app.get('/blog/:slug', (req, res) => {
+    const slug = req.params.slug.replace(/[^a-z0-9-]/gi, '');
+    const filePath = path.join(__dirname, 'public', 'blog', slug + '.html');
+    res.sendFile(filePath, (err) => {
+      if (err) {
+        res.status(404).json({ error: 'Article not found' });
+      }
+    });
+  });
+
   // IP-based rate limiting for unauthenticated requests
   app.use(ipRateLimit);
 
@@ -101,23 +118,6 @@ async function startServer() {
 
   // Abuse detection
   app.use(abuseDetection(db));
-
-  // Serve static files
-  app.use(express.static(path.join(__dirname, 'public')));
-
-  // Blog routes - serve static HTML articles
-  app.get('/blog', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'blog', 'index.html'));
-  });
-  app.get('/blog/:slug', (req, res) => {
-    const slug = req.params.slug.replace(/[^a-z0-9-]/gi, '');
-    const filePath = path.join(__dirname, 'public', 'blog', slug + '.html');
-    res.sendFile(filePath, (err) => {
-      if (err) {
-        res.status(404).json({ error: 'Article not found' });
-      }
-    });
-  });
 
   // API Routes (both /scan and /api/scan work — we link /api/scan in marketing)
   app.use('/scan', scanRoutes);

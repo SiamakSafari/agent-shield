@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Understanding Trust Scores: A Guide for Agent Developers — AgentShield Blog</title>
+    <meta name="description" content="Learn how AgentShield trust scores work, what goes into the calculation, how 11-pass deobfuscation catches hidden threats, and how to interpret your scan results.">
+    <meta name="keywords" content="AI trust score, trust score explained, agent security scoring, deobfuscation engine, security scan results, agent developer guide">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://agent-shield-production.up.railway.app/blog/understanding-trust-scores">
+
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="Understanding Trust Scores: A Guide for Agent Developers">
+    <meta property="og:description" content="What goes into a trust score, how deobfuscation works, and how to interpret your scan results.">
+    <meta property="og:url" content="https://agent-shield-production.up.railway.app/blog/understanding-trust-scores">
+    <meta property="article:published_time" content="2025-01-25">
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Understanding Trust Scores: A Guide for Agent Developers",
+        "description": "What goes into a trust score, how deobfuscation works, and how to interpret your scan results.",
+        "datePublished": "2025-01-25",
+        "author": {"@type": "Organization", "name": "AgentShield"},
+        "publisher": {"@type": "Organization", "name": "AgentShield"},
+        "url": "https://agent-shield-production.up.railway.app/blog/understanding-trust-scores"
+    }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/blog/blog.css">
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="/" class="logo"><div class="logo-icon">🛡️</div> AgentShield</a>
+        <div class="nav-links">
+            <a href="/#how-it-works">How It Works</a>
+            <a href="/#demo">Try It</a>
+            <a href="/#pricing">Pricing</a>
+            <a href="/blog" class="active">Blog</a>
+            <a href="/#demo" class="nav-cta">Scan Now</a>
+        </div>
+    </div>
+</nav>
+
+<article class="article">
+    <header class="article-header">
+        <span class="blog-tag">Technical</span>
+        <h1>Understanding Trust Scores: A Guide for Agent Developers</h1>
+        <div class="article-meta">
+            <span>AgentShield Team</span>
+            <span>•</span>
+            <time datetime="2025-01-25">January 25, 2025</time>
+            <span>•</span>
+            <span>12 min read</span>
+        </div>
+    </header>
+
+    <div class="article-content">
+        <p>When you scan a skill with AgentShield, you get back a number between 0 and 100. That single number — the <strong>trust score</strong> — distills a complex, multi-dimensional security analysis into an actionable signal. But what actually goes into that score? How does the engine decide whether a skill is "verified" or "dangerous"?</p>
+
+        <p>This guide breaks down the entire trust scoring system for agent developers who want to understand, optimize, and act on their results.</p>
+
+        <h2>The Trust Score Scale</h2>
+
+        <p>Every scanned skill receives a trust score from 0 to 100, mapped to four trust levels:</p>
+
+        <ul>
+            <li><strong>Verified (90–100):</strong> No vulnerabilities detected. The skill passed all 464 checks across all deobfuscation passes. Safe for production use.</li>
+            <li><strong>Trusted (70–89):</strong> Minor issues or informational findings. Generally safe, but review the report for low-risk advisories.</li>
+            <li><strong>Suspicious (40–69):</strong> Potential security risks detected. Do not deploy without reviewing and addressing the findings.</li>
+            <li><strong>Dangerous (0–39):</strong> Critical threats found. Active malicious patterns, credential theft, or code execution risks. Do not use.</li>
+        </ul>
+
+        <p>These thresholds were calibrated against thousands of real-world skills — both legitimate and malicious — to minimize false positives while catching genuine threats.</p>
+
+        <h2>What the Scanner Checks</h2>
+
+        <p>AgentShield's scanning engine evaluates skills across <strong>464 distinct attack patterns</strong>, organized into several categories:</p>
+
+        <h3>Category 1: Prompt Injection (87 patterns)</h3>
+        <p>The scanner looks for hidden instructions that could manipulate an agent's behavior. This includes:</p>
+        <ul>
+            <li>System prompt overrides embedded in skill descriptions or responses</li>
+            <li>Instruction injection via HTML comments, metadata fields, or response headers</li>
+            <li>Role-switching attacks ("Ignore previous instructions and...")</li>
+            <li>Indirect injection through user-generated content the skill processes</li>
+        </ul>
+
+        <h3>Category 2: Credential Theft (63 patterns)</h3>
+        <p>Checks for code that harvests authentication credentials:</p>
+        <ul>
+            <li>Reading environment variables containing API keys or secrets</li>
+            <li>Intercepting OAuth token exchanges</li>
+            <li>Logging or transmitting authorization headers</li>
+            <li>Accessing credential stores, keychains, or config files</li>
+        </ul>
+
+        <h3>Category 3: Data Exfiltration (71 patterns)</h3>
+        <p>Detects unauthorized data transmission:</p>
+        <ul>
+            <li>Outbound HTTP requests to non-allowlisted domains</li>
+            <li>DNS tunneling and covert channels</li>
+            <li>Steganographic data encoding in images or files</li>
+            <li>Websocket connections to unknown servers</li>
+        </ul>
+
+        <h3>Category 4: Code Execution (58 patterns)</h3>
+        <p>Identifies arbitrary code execution risks:</p>
+        <ul>
+            <li><code>eval()</code>, <code>exec()</code>, <code>Function()</code> and dynamic code generation</li>
+            <li>Shell command execution via child_process, os.system, or subprocess</li>
+            <li>Dynamic import/require of remote modules</li>
+            <li>WebAssembly instantiation from untrusted sources</li>
+        </ul>
+
+        <h3>Category 5: Network Manipulation (52 patterns)</h3>
+        <p>Finds network-level attack vectors:</p>
+        <ul>
+            <li>DNS rebinding setups</li>
+            <li>SSRF (Server-Side Request Forgery) patterns</li>
+            <li>Proxy manipulation and traffic interception</li>
+            <li>Certificate pinning bypasses</li>
+        </ul>
+
+        <h3>Category 6: Persistence & Evasion (49 patterns)</h3>
+        <p>Detects attempts to maintain access or avoid detection:</p>
+        <ul>
+            <li>File system modifications outside the skill's scope</li>
+            <li>Cron job or scheduled task creation</li>
+            <li>Anti-debugging and analysis evasion techniques</li>
+            <li>Time-delayed payload activation</li>
+        </ul>
+
+        <h3>Categories 7–10: Additional Checks (84 patterns)</h3>
+        <p>Supply chain risks, dependency confusion, configuration manipulation, and information disclosure round out the scanner's coverage.</p>
+
+        <h2>The 11-Pass Deobfuscation Engine</h2>
+
+        <p>This is where AgentShield's real power lies. Attackers don't write <code>steal_credentials()</code> in plain text — they hide malicious code behind layers of obfuscation. Our engine systematically unwraps these layers.</p>
+
+        <h3>How It Works</h3>
+
+        <p>The deobfuscation engine makes <strong>11 sequential passes</strong> over the skill's code and content, each targeting a different obfuscation technique:</p>
+
+        <ol>
+            <li><strong>Base64 decoding:</strong> Decodes base64-encoded strings to reveal hidden payloads. Handles single and multi-layer encoding.</li>
+            <li><strong>Unicode normalization:</strong> Resolves Unicode escape sequences (<code>\u0065\u0076\u0061\u006c</code> → <code>eval</code>), including zero-width characters used for invisible instructions.</li>
+            <li><strong>String concatenation resolution:</strong> Reassembles strings split across multiple variables or expressions (<code>'ev' + 'al'</code> → <code>eval</code>).</li>
+            <li><strong>Hex decoding:</strong> Converts hex-encoded strings (<code>\x65\x76\x61\x6c</code>) to their readable form.</li>
+            <li><strong>Template literal expansion:</strong> Evaluates template strings and tagged templates that construct code dynamically.</li>
+            <li><strong>URL decoding:</strong> Resolves percent-encoded strings that hide URLs or code in URL parameters.</li>
+            <li><strong>HTML entity resolution:</strong> Converts HTML entities (<code>&amp;#101;&amp;#118;&amp;#97;&amp;#108;</code>) back to readable text.</li>
+            <li><strong>Rot13/Caesar cipher:</strong> Detects and reverses simple character rotation ciphers commonly used for quick obfuscation.</li>
+            <li><strong>Array mapping reconstruction:</strong> Rebuilds code that's been split into array elements and reassembled via map/join operations.</li>
+            <li><strong>Variable substitution:</strong> Tracks variable assignments and substitutes values to reveal the actual code that will execute.</li>
+            <li><strong>Recursive unpacking:</strong> Re-runs the previous 10 passes on any newly revealed content, catching multi-layer obfuscation (encoded code that decodes to more encoded code).</li>
+        </ol>
+
+        <p>Each pass can reveal content that triggers additional findings in subsequent passes. A string that looks innocuous at pass 1 might decode to a credential theft pattern by pass 7.</p>
+
+        <h2>How the Score Is Calculated</h2>
+
+        <p>The trust score starts at 100 (perfect) and is reduced based on findings. Each finding has a <strong>severity</strong> and a <strong>confidence</strong> level:</p>
+
+        <ul>
+            <li><strong>Critical findings</strong> (credential theft, active exfiltration): −25 to −40 points each</li>
+            <li><strong>High findings</strong> (code execution, prompt injection): −15 to −25 points each</li>
+            <li><strong>Medium findings</strong> (suspicious patterns, risky permissions): −5 to −15 points each</li>
+            <li><strong>Low findings</strong> (informational, best practice violations): −1 to −5 points each</li>
+        </ul>
+
+        <p>Confidence weighting ensures that a pattern match found in deobfuscated code (high confidence) has more impact than a heuristic match on surface-level code (lower confidence).</p>
+
+        <p>The score floors at 0 — a skill can't go below 0 regardless of how many findings it triggers.</p>
+
+        <h2>Reading Your Scan Report</h2>
+
+        <p>Every scan produces a detailed report. Here's how to read the key sections:</p>
+
+        <h3>Summary Section</h3>
+        <p>At the top: trust score, trust level (verified/trusted/suspicious/dangerous), scan duration, and total findings count broken down by severity.</p>
+
+        <h3>Findings List</h3>
+        <p>Each finding includes:</p>
+        <ul>
+            <li><strong>Title:</strong> What was found (e.g., "Base64-encoded credential access pattern")</li>
+            <li><strong>Severity:</strong> Critical, High, Medium, or Low</li>
+            <li><strong>Category:</strong> Which attack category it belongs to</li>
+            <li><strong>Description:</strong> Detailed explanation of the risk</li>
+            <li><strong>Location:</strong> Where in the skill the pattern was found</li>
+            <li><strong>Deobfuscation pass:</strong> Which pass revealed it (if not found in plaintext)</li>
+        </ul>
+
+        <h3>Recommendations</h3>
+        <p>Actionable steps to address each finding, prioritized by severity.</p>
+
+        <h2>Improving Your Trust Score</h2>
+
+        <p>If you're a skill developer and your skill scored lower than expected, here's how to improve:</p>
+
+        <ol>
+            <li><strong>Remove unnecessary permissions.</strong> If your skill requests capabilities it doesn't need, that lowers the score.</li>
+            <li><strong>Avoid eval() and dynamic code.</strong> Use static imports and explicit function calls instead of dynamic code generation.</li>
+            <li><strong>Declare your network targets.</strong> If your skill makes API calls, document the endpoints in your manifest.</li>
+            <li><strong>Don't obfuscate.</strong> Obfuscated code triggers deobfuscation analysis and raises suspicion — even if the underlying code is benign. Ship readable code.</li>
+            <li><strong>Use environment variables properly.</strong> Access only the credentials you need, and never log or transmit them.</li>
+            <li><strong>Re-scan after changes.</strong> AgentShield gives you 10 free scans per day — use them to verify your fixes.</li>
+        </ol>
+
+        <h2>Programmatic Access</h2>
+
+        <p>For CI/CD integration, use the AgentShield API to scan skills automatically:</p>
+
+        <pre><code># Scan a skill
+curl -X POST https://agent-shield-production.up.railway.app/scan \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key" \
+  -d '{"url": "https://example.com/my-skill"}'
+
+# Check the trust score in your pipeline
+SCORE=$(curl -s -X POST .../scan -d '{"url":"..."}' | jq '.trustScore')
+if [ "$SCORE" -lt 70 ]; then
+  echo "❌ Skill failed security check (score: $SCORE)"
+  exit 1
+fi</code></pre>
+
+        <p>Pro and Enterprise plans include API key access, higher rate limits, and batch scanning for scanning entire skill catalogs.</p>
+
+        <h2>The Future of Trust Scoring</h2>
+
+        <p>Trust scores are evolving. We're working on:</p>
+
+        <ul>
+            <li><strong>Historical scoring:</strong> Track how a skill's score changes over time — regressions are a red flag.</li>
+            <li><strong>Behavioral scoring:</strong> Combine static analysis with runtime behavior data for more accurate assessments.</li>
+            <li><strong>Community signals:</strong> Factor in peer reviews, usage data, and community reports.</li>
+            <li><strong>Cross-skill analysis:</strong> Detect risks that only emerge when specific skills are used together.</li>
+        </ul>
+
+        <p>The goal is a trust score that's as comprehensive and reliable as a credit score — but for AI agent security. A single number that everyone in the ecosystem can rely on to make informed decisions.</p>
+
+        <div class="article-cta">
+            <h3>Check your skill's trust score</h3>
+            <p>Free scanning — no account required. Results in seconds.</p>
+            <a href="/#demo">Scan Now →</a>
+        </div>
+    </div>
+</article>
+
+<footer>
+    <div class="footer-inner">
+        <div class="footer-left">© 2025 AgentShield. Built for the agentic era.</div>
+        <div class="footer-links">
+            <a href="/blog">Blog</a>
+            <a href="/discovery">API</a>
+            <a href="https://github.com/SiamakSafari/agent-shield" target="_blank" rel="noopener">GitHub</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

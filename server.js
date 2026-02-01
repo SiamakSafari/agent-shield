@@ -39,7 +39,7 @@ async function startServer() {
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "https:"],
-        scriptSrc: ["'self'", "https://cdnjs.cloudflare.com"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
         connectSrc: ["'self'"]
       }
     },
@@ -104,6 +104,20 @@ async function startServer() {
 
   // Serve static files
   app.use(express.static(path.join(__dirname, 'public')));
+
+  // Blog routes - serve static HTML articles
+  app.get('/blog', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'blog', 'index.html'));
+  });
+  app.get('/blog/:slug', (req, res) => {
+    const slug = req.params.slug.replace(/[^a-z0-9-]/gi, '');
+    const filePath = path.join(__dirname, 'public', 'blog', slug + '.html');
+    res.sendFile(filePath, (err) => {
+      if (err) {
+        res.status(404).json({ error: 'Article not found' });
+      }
+    });
+  });
 
   // API Routes (both /scan and /api/scan work — we link /api/scan in marketing)
   app.use('/scan', scanRoutes);

@@ -65,7 +65,8 @@ dist
 
 # Gatsby files
 .cache/
-public
+# public - now tracked for landing page and blog
+# public
 
 # Storybook build outputs
 .out

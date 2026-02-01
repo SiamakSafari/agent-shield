@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Protect Your AI Agent from Malicious Skills — AgentShield Blog</title>
+    <meta name="description" content="A practical guide to vetting, scanning, and sandboxing third-party AI agent skills. Learn how to protect your agent from credential theft, prompt injection, and data exfiltration.">
+    <meta name="keywords" content="protect AI agent, malicious skills, agent security guide, AI plugin security, skill scanning, agent sandboxing">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://agent-shield-production.up.railway.app/blog/protect-ai-agent-from-malicious-skills">
+
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="How to Protect Your AI Agent from Malicious Skills">
+    <meta property="og:description" content="A practical guide to vetting, scanning, and sandboxing third-party AI agent skills before they touch your agent.">
+    <meta property="og:url" content="https://agent-shield-production.up.railway.app/blog/protect-ai-agent-from-malicious-skills">
+    <meta property="article:published_time" content="2025-01-20">
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "How to Protect Your AI Agent from Malicious Skills",
+        "description": "A practical guide to vetting, scanning, and sandboxing third-party AI agent skills.",
+        "datePublished": "2025-01-20",
+        "author": {"@type": "Organization", "name": "AgentShield"},
+        "publisher": {"@type": "Organization", "name": "AgentShield"},
+        "url": "https://agent-shield-production.up.railway.app/blog/protect-ai-agent-from-malicious-skills"
+    }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/blog/blog.css">
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="/" class="logo"><div class="logo-icon">🛡️</div> AgentShield</a>
+        <div class="nav-links">
+            <a href="/#how-it-works">How It Works</a>
+            <a href="/#demo">Try It</a>
+            <a href="/#pricing">Pricing</a>
+            <a href="/blog" class="active">Blog</a>
+            <a href="/#demo" class="nav-cta">Scan Now</a>
+        </div>
+    </div>
+</nav>
+
+<article class="article">
+    <header class="article-header">
+        <span class="blog-tag">Guide</span>
+        <h1>How to Protect Your AI Agent from Malicious Skills</h1>
+        <div class="article-meta">
+            <span>AgentShield Team</span>
+            <span>•</span>
+            <time datetime="2025-01-20">January 20, 2025</time>
+            <span>•</span>
+            <span>10 min read</span>
+        </div>
+    </header>
+
+    <div class="article-content">
+        <p>Third-party skills and plugins are what make AI agents powerful. A coding agent that can search the web, run tests, and deploy to production is exponentially more useful than one limited to its training data. But every skill you add is code your agent will trust and execute — and not all of that code has your best interests in mind.</p>
+
+        <p>This guide walks through practical, actionable steps to protect your AI agents from malicious skills — whether you're building agents, deploying them, or managing an agent marketplace.</p>
+
+        <h2>1. Pre-Installation Scanning</h2>
+
+        <p>The single most effective defense is <strong>scanning skills before they're installed</strong>. This is the equivalent of running an antivirus scan before opening a downloaded file — except the threats are more sophisticated.</p>
+
+        <p>A comprehensive pre-installation scan should check for:</p>
+
+        <ul>
+            <li><strong>Credential harvesting patterns</strong> — code that reads API keys, tokens, or passwords and sends them to external endpoints</li>
+            <li><strong>Prompt injection payloads</strong> — hidden instructions embedded in skill descriptions, responses, or metadata that manipulate agent behavior</li>
+            <li><strong>Data exfiltration channels</strong> — outbound network calls that transmit sensitive data to unauthorized destinations</li>
+            <li><strong>Code execution risks</strong> — eval(), exec(), or dynamic code loading that could run arbitrary commands</li>
+            <li><strong>Obfuscated payloads</strong> — base64 encoding, Unicode escapes, string concatenation, and other techniques used to hide malicious code</li>
+        </ul>
+
+        <p>AgentShield's scanner runs <strong>464 distinct attack pattern checks</strong> with <strong>11 passes of deobfuscation</strong>, catching threats that simpler scanners miss. You can scan any skill URL with a single API call:</p>
+
+        <pre><code>curl -X POST https://agent-shield-production.up.railway.app/scan \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com/my-skill"}'</code></pre>
+
+        <h2>2. The Principle of Least Privilege</h2>
+
+        <p>Every skill should have access to <strong>only what it needs</strong> — nothing more. This is the single most important architectural decision you can make.</p>
+
+        <h3>Practical Implementation</h3>
+
+        <ul>
+            <li><strong>Scope credentials:</strong> If a skill needs database access, give it a read-only connection to specific tables — not admin credentials to the entire database.</li>
+            <li><strong>Limit network access:</strong> Skills that don't need to make external API calls shouldn't be able to. Use network policies to restrict outbound traffic.</li>
+            <li><strong>Isolate file system access:</strong> Skills should operate in their own directory, not have access to the agent's entire filesystem.</li>
+            <li><strong>Time-box permissions:</strong> Temporary elevated access (e.g., for deployment) should expire automatically.</li>
+        </ul>
+
+        <p>Many agent frameworks now support permission manifests — declarations of what a skill needs before installation. If a "weather lookup" skill requests database write access, that's a red flag.</p>
+
+        <h2>3. Runtime Sandboxing</h2>
+
+        <p>Even after scanning and permission scoping, defense in depth demands <strong>runtime isolation</strong>. Skills should execute in sandboxed environments that limit the blast radius of any compromise.</p>
+
+        <h3>Sandboxing Approaches</h3>
+
+        <ul>
+            <li><strong>Container isolation:</strong> Run each skill in its own container with restricted capabilities (no network, limited CPU/memory, read-only filesystem).</li>
+            <li><strong>WebAssembly (Wasm):</strong> Compile skills to Wasm modules that run in a secure, sandboxed runtime with explicit capability grants.</li>
+            <li><strong>Process isolation:</strong> At minimum, run skills in separate processes with restricted system calls via seccomp or AppArmor profiles.</li>
+            <li><strong>API gateway:</strong> Route all skill network traffic through a gateway that logs, filters, and rate-limits requests.</li>
+        </ul>
+
+        <h2>4. Behavioral Monitoring</h2>
+
+        <p>Static scanning catches known patterns. Behavioral monitoring catches everything else.</p>
+
+        <p>Deploy monitoring that tracks:</p>
+
+        <ul>
+            <li><strong>Network traffic:</strong> What endpoints is each skill communicating with? Any unexpected destinations?</li>
+            <li><strong>Data access patterns:</strong> Is the skill reading data it shouldn't need? Accessing other skills' resources?</li>
+            <li><strong>Resource consumption:</strong> Sudden spikes in CPU, memory, or network usage can indicate cryptomining or DDoS participation.</li>
+            <li><strong>Output anomalies:</strong> Is the skill injecting unexpected instructions into its responses? Are responses significantly longer than expected (hidden payloads)?</li>
+        </ul>
+
+        <p>Set up alerts for anomalies and have a kill switch ready. When a skill behaves unexpectedly, you should be able to disable it instantly without affecting the rest of your agent's capabilities.</p>
+
+        <h2>5. Supply Chain Verification</h2>
+
+        <p>Skills don't exist in isolation. They depend on libraries, APIs, and other skills. A compromised dependency can turn a trusted skill into a threat vector.</p>
+
+        <ul>
+            <li><strong>Pin versions:</strong> Don't let skills auto-update without review. A new version might introduce malicious code.</li>
+            <li><strong>Verify publishers:</strong> Check the skill developer's identity, history, and reputation. Anonymous skills with no track record are higher risk.</li>
+            <li><strong>Audit dependencies:</strong> Use tools like `npm audit`, `pip audit`, or AgentShield's batch scanning to check the full dependency tree.</li>
+            <li><strong>Monitor for takeovers:</strong> Watch for skills that change ownership, especially popular ones. Name-squatting and account takeover are common supply chain attacks.</li>
+        </ul>
+
+        <h2>6. Incident Response Planning</h2>
+
+        <p>Despite best efforts, breaches happen. Have a plan:</p>
+
+        <ol>
+            <li><strong>Detection:</strong> How will you know a skill has been compromised? (Monitoring, alerts, user reports)</li>
+            <li><strong>Containment:</strong> How quickly can you disable a compromised skill? (Kill switch, circuit breakers)</li>
+            <li><strong>Assessment:</strong> What data was potentially exposed? What actions did the compromised skill take?</li>
+            <li><strong>Recovery:</strong> Rotate all credentials the skill had access to. Review all actions taken during the compromise window.</li>
+            <li><strong>Post-mortem:</strong> How did the malicious skill pass initial screening? What can you improve?</li>
+        </ol>
+
+        <h2>7. Building a Security Culture</h2>
+
+        <p>Tools and processes matter, but culture is the foundation. Make security a first-class concern in your agent development:</p>
+
+        <ul>
+            <li><strong>Require trust badges:</strong> Only allow skills with verified or trusted trust scores in production environments.</li>
+            <li><strong>Automate scanning:</strong> Integrate AgentShield into your CI/CD pipeline so every skill is scanned before deployment.</li>
+            <li><strong>Share findings:</strong> When you discover a malicious skill, report it to the community. Security is a collective effort.</li>
+            <li><strong>Stay informed:</strong> Follow security advisories, subscribe to threat intelligence feeds, and keep your scanning tools updated.</li>
+        </ul>
+
+        <h2>Putting It All Together</h2>
+
+        <p>The layered defense model looks like this:</p>
+
+        <ol>
+            <li><strong>Pre-installation:</strong> Scan with AgentShield → check trust score → review permissions manifest</li>
+            <li><strong>Installation:</strong> Apply least privilege → configure sandbox → set up monitoring</li>
+            <li><strong>Runtime:</strong> Monitor behavior → alert on anomalies → auto-disable suspicious skills</li>
+            <li><strong>Ongoing:</strong> Re-scan on updates → audit dependencies → rotate credentials regularly</li>
+        </ol>
+
+        <p>No single measure is sufficient. But layered together, these practices dramatically reduce your attack surface and give you the visibility needed to respond quickly when threats emerge.</p>
+
+        <p>The agent era is here. Secure it from the start.</p>
+
+        <div class="article-cta">
+            <h3>Start scanning your skills today</h3>
+            <p>Free tier: 10 scans per day. No signup required.</p>
+            <a href="/#demo">Try AgentShield →</a>
+        </div>
+    </div>
+</article>
+
+<footer>
+    <div class="footer-inner">
+        <div class="footer-left">© 2025 AgentShield. Built for the agentic era.</div>
+        <div class="footer-links">
+            <a href="/blog">Blog</a>
+            <a href="/discovery">API</a>
+            <a href="https://github.com/SiamakSafari/agent-shield" target="_blank" rel="noopener">GitHub</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

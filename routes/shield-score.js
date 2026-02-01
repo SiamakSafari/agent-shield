@@ -157,7 +157,8 @@ router.post('/', async (req, res) => {
 // ── GET /api/shield-score/badge/:score ───────────────────────────────────────
 // Returns a dynamic SVG badge
 router.get('/badge/:score', (req, res) => {
-  const score = Math.max(0, Math.min(100, parseInt(req.params.score) || 0));
+  const scoreValue = parseInt(req.params.score, 10);
+  const score = Math.max(0, Math.min(100, isNaN(scoreValue) ? 0 : scoreValue));
   const badgeLevel = getBadgeLevel(score);
   const color = getBadgeColor(score);
   const darkColor = adjustColor(color, -30);

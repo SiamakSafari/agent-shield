@@ -286,8 +286,10 @@ router.get('/:id/alerts', async (req, res) => {
       return res.status(404).json({ error: 'Monitor not found' });
     }
 
-    const limit = Math.min(parseInt(req.query.limit) || 50, 200);
-    const offset = parseInt(req.query.offset) || 0;
+    const limitValue = parseInt(req.query.limit, 10);
+    const limit = Math.min(isNaN(limitValue) ? 50 : limitValue, 200);
+    const offsetValue = parseInt(req.query.offset, 10);
+    const offset = isNaN(offsetValue) ? 0 : offsetValue;
 
     const alerts = await db.all(
       `SELECT id, type, severity, message, skill_url, old_score, new_score, acknowledged, created_at

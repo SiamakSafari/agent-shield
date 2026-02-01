@@ -75,15 +75,19 @@ router.get('/user/:userId', async (req, res) => {
       });
     }
 
-    const reports = await req.db?.getUserScans(userId, parseInt(limit));
+    const limitValue = parseInt(limit, 10);
+    if (isNaN(limitValue)) {
+      return res.status(400).json({ error: 'Invalid limit parameter' });
+    }
+    const reports = await req.db?.getUserScans(userId, limitValue);
     
     if (!reports) {
       return res.json({
         scans: [],
         pagination: {
           total: 0,
-          limit: parseInt(limit),
-          offset: parseInt(offset)
+          limit: limitValue,
+          offset: parseInt(offset, 10) || 0
         }
       });
     }
@@ -106,18 +110,23 @@ router.get('/user/:userId', async (req, res) => {
     }
 
     // Apply pagination
+    const offsetValue = parseInt(offset, 10);
+    if (isNaN(offsetValue)) {
+      return res.status(400).json({ error: 'Invalid offset parameter' });
+    }
+    
     const paginatedReports = filteredReports.slice(
-      parseInt(offset), 
-      parseInt(offset) + parseInt(limit)
+      offsetValue, 
+      offsetValue + limitValue
     );
 
     res.json({
       scans: paginatedReports,
       pagination: {
         total: filteredReports.length,
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-        hasMore: parseInt(offset) + parseInt(limit) < filteredReports.length
+        limit: limitValue,
+        offset: offsetValue,
+        hasMore: offsetValue + limitValue < filteredReports.length
       },
       filters: {
         threatLevel,
@@ -151,7 +160,11 @@ router.get('/analytics', async (req, res) => {
     const userId = req.user.id;
 
     // Get user analytics
-    const analytics = await req.analytics?.getUserStats(userId, parseInt(days)) || {};
+    const daysValue = parseInt(days, 10);
+    if (isNaN(daysValue)) {
+      return res.status(400).json({ error: 'Invalid days parameter' });
+    }
+    const analytics = await req.analytics?.getUserStats(userId, daysValue) || {};
     
     // Get scan statistics
     const scanStats = await req.db?.getStats() || {};
@@ -172,9 +185,9 @@ router.get('/analytics', async (req, res) => {
       topEndpoints: analytics.topEndpoints || [],
       systemStats: scanStats,
       period: {
-        days: parseInt(days),
+        days: daysValue,
         groupBy: groupBy,
-        from: new Date(Date.now() - parseInt(days) * 24 * 60 * 60 * 1000).toISOString(),
+        from: new Date(Date.now() - daysValue * 24 * 60 * 60 * 1000).toISOString(),
         to: new Date().toISOString()
       }
     });

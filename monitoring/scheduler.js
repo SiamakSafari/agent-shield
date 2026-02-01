@@ -48,17 +48,27 @@ async function createAlert(db, monitorId, { type, severity, message, skillUrl, o
   const alertId = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  await db.run(
-    `INSERT INTO alerts (id, monitor_id, type, severity, message, skill_url, old_score, new_score, acknowledged, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
-    [alertId, monitorId, type, severity, message, skillUrl || null, oldScore ?? null, newScore ?? null, now]
-  );
+  try {
+    await db.run(
+      `INSERT INTO alerts (id, monitor_id, type, severity, message, skill_url, old_score, new_score, acknowledged, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
+      [alertId, monitorId, type, severity, message, skillUrl || null, oldScore ?? null, newScore ?? null, now]
+    );
+  } catch (error) {
+    console.error(`[Monitor] Failed to create alert for monitor ${monitorId}:`, error.message);
+    return null;
+  }
 
   // Fire webhooks
-  const webhooks = await db.all(
-    'SELECT id, url, secret FROM webhooks WHERE monitor_id = ? AND is_active = 1',
-    [monitorId]
-  );
+  let webhooks = [];
+  try {
+    webhooks = await db.all(
+      'SELECT id, url, secret FROM webhooks WHERE monitor_id = ? AND is_active = 1',
+      [monitorId]
+    );
+  } catch (error) {
+    console.error(`[Monitor] Failed to fetch webhooks for monitor ${monitorId}:`, error.message);
+  }
 
   const payload = JSON.stringify({
     alertId,
@@ -97,10 +107,16 @@ async function createAlert(db, monitorId, { type, severity, message, skillUrl, o
  * Scan all skills in a single monitor, returning summary results
  */
 async function scanMonitor(db, monitorId) {
-  const skills = await db.all(
-    'SELECT id, url, content_hash, last_trust_score FROM monitor_skills WHERE monitor_id = ?',
-    [monitorId]
-  );
+  let skills = [];
+  try {
+    skills = await db.all(
+      'SELECT id, url, content_hash, last_trust_score FROM monitor_skills WHERE monitor_id = ?',
+      [monitorId]
+    );
+  } catch (error) {
+    console.error(`[Monitor] Failed to fetch skills for monitor ${monitorId}:`, error.message);
+    return [];
+  }
 
   const results = [];
 
@@ -119,11 +135,15 @@ async function scanMonitor(db, monitorId) {
         newScore: null
       });
 
-      await db.run(
-        `INSERT INTO scan_history (id, monitor_id, skill_url, trust_score, threat_level, content_hash, scan_id, scanned_at, error)
-         VALUES (?, ?, ?, NULL, NULL, NULL, NULL, ?, ?)`,
-        [crypto.randomUUID(), monitorId, skill.url, now, result.message]
-      );
+      try {
+        await db.run(
+          `INSERT INTO scan_history (id, monitor_id, skill_url, trust_score, threat_level, content_hash, scan_id, scanned_at, error)
+           VALUES (?, ?, ?, NULL, NULL, NULL, NULL, ?, ?)`,
+          [crypto.randomUUID(), monitorId, skill.url, now, result.message]
+        );
+      } catch (error) {
+        console.error(`[Monitor] Failed to insert scan_history for ${skill.url}:`, error.message);
+      }
 
       results.push({ url: skill.url, error: true, message: result.message });
       continue;
@@ -149,17 +169,25 @@ async function scanMonitor(db, monitorId) {
     }
 
     // Save to scan_history
-    await db.run(
-      `INSERT INTO scan_history (id, monitor_id, skill_url, trust_score, threat_level, content_hash, scan_id, scanned_at, error)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
-      [crypto.randomUUID(), monitorId, skill.url, result.trustScore, result.threatLevel, result.contentHash, result.scanId, now]
-    );
+    try {
+      await db.run(
+        `INSERT INTO scan_history (id, monitor_id, skill_url, trust_score, threat_level, content_hash, scan_id, scanned_at, error)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+        [crypto.randomUUID(), monitorId, skill.url, result.trustScore, result.threatLevel, result.contentHash, result.scanId, now]
+      );
+    } catch (error) {
+      console.error(`[Monitor] Failed to insert scan_history for ${skill.url}:`, error.message);
+    }
 
     // Update skill record
-    await db.run(
-      'UPDATE monitor_skills SET content_hash = ?, last_trust_score = ?, last_scanned_at = ? WHERE id = ?',
-      [result.contentHash, result.trustScore, now, skill.id]
-    );
+    try {
+      await db.run(
+        'UPDATE monitor_skills SET content_hash = ?, last_trust_score = ?, last_scanned_at = ? WHERE id = ?',
+        [result.contentHash, result.trustScore, now, skill.id]
+      );
+    } catch (error) {
+      console.error(`[Monitor] Failed to update skill record for ${skill.url}:`, error.message);
+    }
 
     // Generate alerts
     if (contentChanged) {
@@ -209,10 +237,14 @@ async function scanMonitor(db, monitorId) {
   }
 
   // Update monitor timestamp
-  await db.run(
-    'UPDATE monitors SET updated_at = ? WHERE id = ?',
-    [new Date().toISOString(), monitorId]
-  );
+  try {
+    await db.run(
+      'UPDATE monitors SET updated_at = ? WHERE id = ?',
+      [new Date().toISOString(), monitorId]
+    );
+  } catch (error) {
+    console.error(`[Monitor] Failed to update monitor timestamp for ${monitorId}:`, error.message);
+  }
 
   return results;
 }
@@ -224,9 +256,15 @@ async function runScanCycle(db) {
   const now = Date.now();
   console.log(`🔄 [Monitor] Starting scan cycle at ${new Date(now).toISOString()}`);
 
-  const monitors = await db.all(
-    'SELECT id, plan, updated_at FROM monitors WHERE is_active = 1'
-  );
+  let monitors = [];
+  try {
+    monitors = await db.all(
+      'SELECT id, plan, updated_at FROM monitors WHERE is_active = 1'
+    );
+  } catch (error) {
+    console.error('[Monitor] Failed to fetch active monitors:', error.message);
+    return;
+  }
 
   let scanned = 0;
   let skipped = 0;

@@ -11,35 +11,41 @@ class AgentShieldDB {
   }
 
   async init() {
-    const tursoUrl = process.env.TURSO_DATABASE_URL;
-    const tursoToken = process.env.TURSO_AUTH_TOKEN;
+    try {
+      const tursoUrl = process.env.TURSO_DATABASE_URL;
+      const tursoToken = process.env.TURSO_AUTH_TOKEN;
 
-    if (tursoUrl && tursoToken) {
-      // Use Turso remote database
-      this.db = createClient({
-        url: tursoUrl,
-        authToken: tursoToken,
-      });
-      console.log('📡 Connected to Turso database');
-    } else {
-      // Fall back to local SQLite file via libsql
-      const dbPath = this.options.dbPath || process.env.DATABASE_PATH || './agent-shield.db';
-      const dbDir = path.dirname(dbPath);
-      if (!fs.existsSync(dbDir)) {
-        fs.mkdirSync(dbDir, { recursive: true });
+      if (tursoUrl && tursoToken) {
+        // Use Turso remote database
+        this.db = createClient({
+          url: tursoUrl,
+          authToken: tursoToken,
+        });
+        console.log('📡 Connected to Turso database');
+      } else {
+        // Fall back to local SQLite file via libsql
+        const dbPath = this.options.dbPath || process.env.DATABASE_PATH || './agent-shield.db';
+        const dbDir = path.dirname(dbPath);
+        if (!fs.existsSync(dbDir)) {
+          fs.mkdirSync(dbDir, { recursive: true });
+        }
+        this.db = createClient({
+          url: `file:${dbPath}`,
+        });
+        console.log(`💾 Using local SQLite database: ${dbPath}`);
       }
-      this.db = createClient({
-        url: `file:${dbPath}`,
-      });
-      console.log(`💾 Using local SQLite database: ${dbPath}`);
-    }
 
-    await this.createTables();
-    await this.setupIndexes();
+      await this.createTables();
+      await this.setupIndexes();
+    } catch (error) {
+      console.error('[DB] init failed:', error.message);
+      throw new Error('Failed to initialize database');
+    }
   }
 
   async createTables() {
-    await this.db.executeMultiple(`
+    try {
+      await this.db.executeMultiple(`
       CREATE TABLE IF NOT EXISTS scans (
         id TEXT PRIMARY KEY,
         timestamp TEXT NOT NULL,
@@ -190,10 +196,15 @@ class AgentShieldDB {
         last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    } catch (error) {
+      console.error('[DB] createTables failed:', error.message);
+      throw new Error('Failed to create database tables');
+    }
   }
 
   async setupIndexes() {
-    await this.db.executeMultiple(`
+    try {
+      await this.db.executeMultiple(`
       CREATE INDEX IF NOT EXISTS idx_scans_timestamp ON scans(timestamp);
       CREATE INDEX IF NOT EXISTS idx_scans_threat_level ON scans(threat_level);
       CREATE INDEX IF NOT EXISTS idx_scans_user_id ON scans(user_id);
@@ -213,28 +224,48 @@ class AgentShieldDB {
       CREATE INDEX IF NOT EXISTS idx_shield_scores_score ON shield_scores(score DESC);
       CREATE INDEX IF NOT EXISTS idx_shield_scores_last_updated ON shield_scores(last_updated);
     `);
+    } catch (error) {
+      console.error('[DB] setupIndexes failed:', error.message);
+      throw new Error('Failed to create database indexes');
+    }
   }
 
   // Helper: execute a query and return first row (like .get())
   async get(sql, args = []) {
-    const result = await this.db.execute({ sql, args });
-    return result.rows.length > 0 ? result.rows[0] : null;
+    try {
+      const result = await this.db.execute({ sql, args });
+      return result.rows.length > 0 ? result.rows[0] : null;
+    } catch (error) {
+      console.error('[DB] get failed:', error.message);
+      return null;
+    }
   }
 
   // Helper: execute a query and return all rows (like .all())
   async all(sql, args = []) {
-    const result = await this.db.execute({ sql, args });
-    return result.rows;
+    try {
+      const result = await this.db.execute({ sql, args });
+      return result.rows;
+    } catch (error) {
+      console.error('[DB] all failed:', error.message);
+      return [];
+    }
   }
 
   // Helper: execute a statement (like .run())
   async run(sql, args = []) {
-    const result = await this.db.execute({ sql, args });
-    return { changes: result.rowsAffected, lastInsertRowid: result.lastInsertRowid };
+    try {
+      const result = await this.db.execute({ sql, args });
+      return { changes: result.rowsAffected, lastInsertRowid: result.lastInsertRowid };
+    } catch (error) {
+      console.error('[DB] run failed:', error.message);
+      throw new Error('Database operation failed');
+    }
   }
 
   // Save scan result to database
   async saveScan(scanResult, metadata = {}) {
+    try {
     const criticalCount = scanResult.findings.filter(f => f.severity === 'critical').length;
     const highCount = scanResult.findings.filter(f => f.severity === 'high').length;
     const mediumCount = scanResult.findings.filter(f => f.severity === 'medium').length;
@@ -296,155 +327,209 @@ class AgentShieldDB {
       });
     }
 
-    await this.db.batch(statements, 'write');
-    await this.updateDailyStats();
+      await this.db.batch(statements, 'write');
+      await this.updateDailyStats();
+    } catch (error) {
+      console.error('[DB] saveScan failed:', error.message);
+      throw new Error('Failed to save scan results');
+    }
   }
 
   // Retrieve scan result by ID
   async getScan(scanId) {
-    const scan = await this.get('SELECT * FROM scans WHERE id = ?', [scanId]);
-    if (!scan) return null;
+    try {
+      const scan = await this.get('SELECT * FROM scans WHERE id = ?', [scanId]);
+      if (!scan) return null;
 
-    const findings = await this.all(
-      'SELECT * FROM findings WHERE scan_id = ? ORDER BY severity, line_number',
-      [scanId]
-    );
+      const findings = await this.all(
+        'SELECT * FROM findings WHERE scan_id = ? ORDER BY severity, line_number',
+        [scanId]
+      );
 
-    return {
-      scanId: scan.id,
-      timestamp: scan.timestamp,
-      source: scan.source,
-      threatLevel: scan.threat_level,
-      trustScore: scan.trust_score,
-      badge: scan.badge,
-      findings: findings.map(f => ({
-        severity: f.severity,
-        category: f.category,
-        title: f.title,
-        description: f.description,
-        evidence: f.evidence,
-        line: f.line_number,
-        remediation: f.remediation,
-        patternId: f.pattern_id,
-      })),
-      metadata: {
-        scanDurationMs: scan.scan_duration_ms,
-        linesScanned: scan.lines_scanned,
-        patternsChecked: scan.patterns_checked,
-      },
-    };
+      return {
+        scanId: scan.id,
+        timestamp: scan.timestamp,
+        source: scan.source,
+        threatLevel: scan.threat_level,
+        trustScore: scan.trust_score,
+        badge: scan.badge,
+        findings: findings.map(f => ({
+          severity: f.severity,
+          category: f.category,
+          title: f.title,
+          description: f.description,
+          evidence: f.evidence,
+          line: f.line_number,
+          remediation: f.remediation,
+          patternId: f.pattern_id,
+        })),
+        metadata: {
+          scanDurationMs: scan.scan_duration_ms,
+          linesScanned: scan.lines_scanned,
+          patternsChecked: scan.patterns_checked,
+        },
+      };
+    } catch (error) {
+      console.error('[DB] getScan failed:', error.message);
+      return null;
+    }
   }
 
   // Get recent scans for a user
   async getUserScans(userId, limit = 50) {
-    return await this.all(
-      `SELECT id, timestamp, source, threat_level, trust_score, badge, findings_count
-       FROM scans
-       WHERE user_id = ?
-       ORDER BY timestamp DESC
-       LIMIT ?`,
-      [userId, limit]
-    );
+    try {
+      return await this.all(
+        `SELECT id, timestamp, source, threat_level, trust_score, badge, findings_count
+         FROM scans
+         WHERE user_id = ?
+         ORDER BY timestamp DESC
+         LIMIT ?`,
+        [userId, limit]
+      );
+    } catch (error) {
+      console.error('[DB] getUserScans failed:', error.message);
+      return [];
+    }
   }
 
   // Get global statistics
   async getStats() {
-    const today = new Date().toISOString().split('T')[0];
-    let todayStats = await this.get('SELECT * FROM stats WHERE date = ?', [today]);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      let todayStats = await this.get('SELECT * FROM stats WHERE date = ?', [today]);
 
-    if (!todayStats) {
-      await this.updateDailyStats();
-      todayStats = await this.get('SELECT * FROM stats WHERE date = ?', [today]);
+      if (!todayStats) {
+        await this.updateDailyStats();
+        todayStats = await this.get('SELECT * FROM stats WHERE date = ?', [today]);
+      }
+
+      const totalStats = await this.get(`
+        SELECT
+          COUNT(*) as total_scans,
+          SUM(CASE WHEN threat_level != 'clean' THEN 1 ELSE 0 END) as threats_detected,
+          SUM(CASE WHEN threat_level = 'clean' THEN 1 ELSE 0 END) as clean_skills,
+          AVG(trust_score) as avg_trust_score,
+          AVG(scan_duration_ms) as avg_scan_duration_ms
+        FROM scans
+      `);
+
+      return {
+        today: todayStats || {
+          total_scans: 0,
+          threats_detected: 0,
+          clean_skills: 0,
+          avg_trust_score: 0,
+        },
+        allTime: totalStats,
+      };
+    } catch (error) {
+      console.error('[DB] getStats failed:', error.message);
+      return {
+        today: {
+          total_scans: 0,
+          threats_detected: 0,
+          clean_skills: 0,
+          avg_trust_score: 0,
+        },
+        allTime: {
+          total_scans: 0,
+          threats_detected: 0,
+          clean_skills: 0,
+          avg_trust_score: 0,
+          avg_scan_duration_ms: 0,
+        },
+      };
     }
-
-    const totalStats = await this.get(`
-      SELECT
-        COUNT(*) as total_scans,
-        SUM(CASE WHEN threat_level != 'clean' THEN 1 ELSE 0 END) as threats_detected,
-        SUM(CASE WHEN threat_level = 'clean' THEN 1 ELSE 0 END) as clean_skills,
-        AVG(trust_score) as avg_trust_score,
-        AVG(scan_duration_ms) as avg_scan_duration_ms
-      FROM scans
-    `);
-
-    return {
-      today: todayStats || {
-        total_scans: 0,
-        threats_detected: 0,
-        clean_skills: 0,
-        avg_trust_score: 0,
-      },
-      allTime: totalStats,
-    };
   }
 
   // Update daily statistics
   async updateDailyStats() {
-    const today = new Date().toISOString().split('T')[0];
+    try {
+      const today = new Date().toISOString().split('T')[0];
 
-    const dailyStats = await this.get(
-      `SELECT
-        COUNT(*) as total_scans,
-        SUM(CASE WHEN threat_level != 'clean' THEN 1 ELSE 0 END) as threats_detected,
-        SUM(CASE WHEN threat_level = 'clean' THEN 1 ELSE 0 END) as clean_skills,
-        COUNT(DISTINCT user_id) as unique_users,
-        AVG(trust_score) as avg_trust_score,
-        AVG(scan_duration_ms) as avg_scan_duration_ms
-      FROM scans
-      WHERE DATE(created_at) = ?`,
-      [today]
-    );
+      const dailyStats = await this.get(
+        `SELECT
+          COUNT(*) as total_scans,
+          SUM(CASE WHEN threat_level != 'clean' THEN 1 ELSE 0 END) as threats_detected,
+          SUM(CASE WHEN threat_level = 'clean' THEN 1 ELSE 0 END) as clean_skills,
+          COUNT(DISTINCT user_id) as unique_users,
+          AVG(trust_score) as avg_trust_score,
+          AVG(scan_duration_ms) as avg_scan_duration_ms
+        FROM scans
+        WHERE DATE(created_at) = ?`,
+        [today]
+      );
 
-    await this.run(
-      `INSERT INTO stats (date, total_scans, threats_detected, clean_skills, unique_users, avg_trust_score, avg_scan_duration_ms)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(date) DO UPDATE SET
-         total_scans = excluded.total_scans,
-         threats_detected = excluded.threats_detected,
-         clean_skills = excluded.clean_skills,
-         unique_users = excluded.unique_users,
-         avg_trust_score = excluded.avg_trust_score,
-         avg_scan_duration_ms = excluded.avg_scan_duration_ms`,
-      [
-        today,
-        dailyStats?.total_scans || 0,
-        dailyStats?.threats_detected || 0,
-        dailyStats?.clean_skills || 0,
-        dailyStats?.unique_users || 0,
-        dailyStats?.avg_trust_score || 0,
-        dailyStats?.avg_scan_duration_ms || 0,
-      ]
-    );
+      await this.run(
+        `INSERT INTO stats (date, total_scans, threats_detected, clean_skills, unique_users, avg_trust_score, avg_scan_duration_ms)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(date) DO UPDATE SET
+           total_scans = excluded.total_scans,
+           threats_detected = excluded.threats_detected,
+           clean_skills = excluded.clean_skills,
+           unique_users = excluded.unique_users,
+           avg_trust_score = excluded.avg_trust_score,
+           avg_scan_duration_ms = excluded.avg_scan_duration_ms`,
+        [
+          today,
+          dailyStats?.total_scans || 0,
+          dailyStats?.threats_detected || 0,
+          dailyStats?.clean_skills || 0,
+          dailyStats?.unique_users || 0,
+          dailyStats?.avg_trust_score || 0,
+          dailyStats?.avg_scan_duration_ms || 0,
+        ]
+      );
+    } catch (error) {
+      console.error('[DB] updateDailyStats failed:', error.message);
+      // Don't throw, just log and continue
+    }
   }
 
   // Log API usage
   async logAPIUsage(apiKey, endpoint, method, ipAddress, userAgent, responseTimeMs, statusCode, errorMessage = null) {
-    await this.run(
-      `INSERT INTO api_usage (api_key, endpoint, method, ip_address, user_agent, response_time_ms, status_code, error_message)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [apiKey, endpoint, method, ipAddress, userAgent, responseTimeMs, statusCode, errorMessage]
-    );
+    try {
+      await this.run(
+        `INSERT INTO api_usage (api_key, endpoint, method, ip_address, user_agent, response_time_ms, status_code, error_message)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [apiKey, endpoint, method, ipAddress, userAgent, responseTimeMs, statusCode, errorMessage]
+      );
+    } catch (error) {
+      console.error('[DB] logAPIUsage failed:', error.message);
+      // Don't throw, just log
+    }
   }
 
   // Check rate limit
   async checkRateLimit(apiKey, ipAddress, endpoint, windowMinutes = 60, limit = 10) {
-    const windowStart = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString();
+    try {
+      const windowStart = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString();
 
-    const currentCount = await this.get(
-      `SELECT COUNT(*) as count
-       FROM api_usage
-       WHERE (api_key = ? OR ip_address = ?)
-         AND endpoint = ?
-         AND timestamp > ?`,
-      [apiKey, ipAddress, endpoint, windowStart]
-    );
+      const currentCount = await this.get(
+        `SELECT COUNT(*) as count
+         FROM api_usage
+         WHERE (api_key = ? OR ip_address = ?)
+           AND endpoint = ?
+           AND timestamp > ?`,
+        [apiKey, ipAddress, endpoint, windowStart]
+      );
 
-    return {
-      allowed: currentCount.count < limit,
-      current: currentCount.count,
-      limit: limit,
-      resetTime: new Date(Date.now() + windowMinutes * 60 * 1000),
-    };
+      return {
+        allowed: currentCount.count < limit,
+        current: currentCount.count,
+        limit: limit,
+        resetTime: new Date(Date.now() + windowMinutes * 60 * 1000),
+      };
+    } catch (error) {
+      console.error('[DB] checkRateLimit failed:', error.message);
+      // Return safe defaults - allow request but log error
+      return {
+        allowed: true,
+        current: 0,
+        limit: limit,
+        resetTime: new Date(Date.now() + windowMinutes * 60 * 1000),
+      };
+    }
   }
 
   // Close database connection

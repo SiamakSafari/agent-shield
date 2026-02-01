@@ -216,7 +216,7 @@ router.get('/preview/:threatLevel/:trustScore', (req, res) => {
     }
 
     // Validate trust score
-    const score = parseInt(trustScore);
+    const score = parseInt(trustScore, 10);
     if (isNaN(score) || score < 0 || score > 100) {
       return res.status(400).json({
         error: 'Invalid trust score',

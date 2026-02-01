@@ -20,6 +20,8 @@ const reportRoutes = require('./routes/reports');
 const badgeRoutes = require('./routes/badges');
 const registerRoutes = require('./routes/register');
 const billingRoutes = require('./routes/billing');
+const monitorRoutes = require('./routes/monitors');
+const { startScheduler } = require('./monitoring/scheduler');
 
 async function startServer() {
   // Initialize Express app
@@ -130,6 +132,8 @@ async function startServer() {
   app.use('/api/register', registerRoutes);
   app.use('/billing', billingRoutes);
   app.use('/api/billing', billingRoutes);
+  app.use('/monitors', monitorRoutes);
+  app.use('/api/monitors', monitorRoutes);
 
   // Root endpoint - Landing page
   app.get('/', async (req, res) => {
@@ -320,6 +324,13 @@ async function startServer() {
         'POST /billing/checkout',
         'GET /billing/status',
         'GET /billing/portal',
+        'POST /api/monitors',
+        'GET /api/monitors',
+        'GET /api/monitors/:id',
+        'DELETE /api/monitors/:id',
+        'POST /api/monitors/:id/scan',
+        'GET /api/monitors/:id/alerts',
+        'POST /api/monitors/:id/webhook',
         'GET /health',
         'GET /stats',
         'GET /discovery'
@@ -352,6 +363,14 @@ async function startServer() {
       console.log(`🏠 Landing Page: http://localhost:${PORT}`);
       console.log(`🔍 Discovery: http://localhost:${PORT}/discovery`);
     }
+
+    // Start background monitoring scheduler
+    const schedulerId = startScheduler(db);
+    console.log(`📡 Continuous Monitoring scheduler active`);
+
+    // Clean up scheduler on shutdown
+    process.on('SIGTERM', () => clearInterval(schedulerId));
+    process.on('SIGINT', () => clearInterval(schedulerId));
   });
 
   return app;

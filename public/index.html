@@ -590,6 +590,7 @@
         </a>
         <div class="nav-links">
             <a href="#how-it-works">How It Works</a>
+            <a href="#monitoring">Monitoring</a>
             <a href="#demo">Try It</a>
             <a href="#pricing">Pricing</a>
             <a href="/blog">Blog</a>
@@ -727,6 +728,60 @@
     </div>
 </section>
 
+<!-- CONTINUOUS MONITORING -->
+<section id="monitoring" style="padding: 100px 24px;">
+    <div class="section-center">
+        <span class="section-label">🆕 Continuous Monitoring</span>
+        <h2 class="section-title">Your skill stack, watched 24/7</h2>
+        <p class="section-desc">Register your agent's skill URLs and we'll monitor them around the clock. If anything changes — content, trust score, availability — you'll know instantly.</p>
+    </div>
+    <div style="max-width: 1000px; margin: 48px auto 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px;">
+            <div style="font-size: 2rem; margin-bottom: 12px;">🔄</div>
+            <h3 style="font-size: 1.1rem; margin-bottom: 8px;">Auto-Scan on Change</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6;">We hash every skill's content on each cycle. If anything changes, we re-scan immediately and compare trust scores.</p>
+        </div>
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px;">
+            <div style="font-size: 2rem; margin-bottom: 12px;">🚨</div>
+            <h3 style="font-size: 1.1rem; margin-bottom: 8px;">Instant Alerts</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6;">Score dropped? Skill unreachable? New vulnerability found? Get alerts via API or webhook — before your users notice.</p>
+        </div>
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px;">
+            <div style="font-size: 2rem; margin-bottom: 12px;">📊</div>
+            <h3 style="font-size: 1.1rem; margin-bottom: 8px;">Scan History</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6;">Full audit trail of every scan — when content changed, what the score was, and what triggered each alert.</p>
+        </div>
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px;">
+            <div style="font-size: 2rem; margin-bottom: 12px;">🔗</div>
+            <h3 style="font-size: 1.1rem; margin-bottom: 8px;">Webhook Integration</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6;">Enterprise plans get real-time webhook delivery with HMAC-signed payloads. Plug into Slack, PagerDuty, or your own pipeline.</p>
+        </div>
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px;">
+            <div style="font-size: 2rem; margin-bottom: 12px;">⏱️</div>
+            <h3 style="font-size: 1.1rem; margin-bottom: 8px;">Tiered Scan Frequency</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6;">Free: daily checks. Pro: every 6 hours. Enterprise: hourly scans with unlimited skills and monitors.</p>
+        </div>
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px;">
+            <div style="font-size: 2rem; margin-bottom: 12px;">🛡️</div>
+            <h3 style="font-size: 1.1rem; margin-bottom: 8px;">Zero-Config Setup</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6;">One API call to register your skill stack. We handle fetching, hashing, scanning, and alerting — you just respond to alerts.</p>
+        </div>
+    </div>
+    <div style="text-align: center; margin-top: 40px;">
+        <code style="display: inline-block; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px 24px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--text-secondary); text-align: left; max-width: 600px; width: 100%;">
+            <span style="color: var(--green);">POST</span> /api/monitors<br>
+            <span style="color: var(--text-muted);">X-API-Key: ash_your_key</span><br><br>
+            {<br>
+            &nbsp;&nbsp;"name": "My Agent Stack",<br>
+            &nbsp;&nbsp;"skills": [<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;"https://example.com/SKILL.md",<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;"https://github.com/user/skill"<br>
+            &nbsp;&nbsp;]<br>
+            }
+        </code>
+    </div>
+</section>
+
 <!-- PRICING -->
 <section id="pricing">
     <div class="section-center">
@@ -743,6 +798,8 @@
                 <li>10 scans per day</li>
                 <li>Full security reports</li>
                 <li>Trust score & badge</li>
+                <li>1 monitor, 5 skills</li>
+                <li>Daily monitoring scans</li>
                 <li>Community support</li>
             </ul>
             <a href="#demo" class="price-btn price-btn-secondary">Start Scanning</a>
@@ -755,8 +812,9 @@
                 <li>1,000 scans per day</li>
                 <li>Batch scanning (25/request)</li>
                 <li>API key access</li>
-                <li>Priority scan queue</li>
-                <li>Webhook notifications</li>
+                <li>10 monitors, 100 skills</li>
+                <li>6-hour monitoring scans</li>
+                <li>Alert API access</li>
                 <li>Email support</li>
             </ul>
             <a href="/register" class="price-btn price-btn-primary">Get Pro</a>
@@ -768,10 +826,11 @@
             <ul class="feature-list">
                 <li>Unlimited scans</li>
                 <li>Batch scanning (100/request)</li>
-                <li>Custom trust policies</li>
+                <li>Unlimited monitors & skills</li>
+                <li>Hourly monitoring scans</li>
+                <li>Webhook alert delivery</li>
                 <li>SLA guarantees</li>
                 <li>Dedicated support</li>
-                <li>On-prem deployment option</li>
             </ul>
             <a href="/register" class="price-btn price-btn-secondary">Contact Sales</a>
         </div>

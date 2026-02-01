@@ -121,6 +121,64 @@ class AgentShieldDB {
         avg_trust_score REAL DEFAULT 0,
         avg_scan_duration_ms REAL DEFAULT 0
       );
+
+      CREATE TABLE IF NOT EXISTS monitors (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        plan TEXT DEFAULT 'free',
+        is_active INTEGER DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS monitor_skills (
+        id TEXT PRIMARY KEY,
+        monitor_id TEXT NOT NULL,
+        url TEXT NOT NULL,
+        content_hash TEXT,
+        last_trust_score INTEGER,
+        last_scanned_at TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (monitor_id) REFERENCES monitors(id)
+      );
+
+      CREATE TABLE IF NOT EXISTS scan_history (
+        id TEXT PRIMARY KEY,
+        monitor_id TEXT NOT NULL,
+        skill_url TEXT NOT NULL,
+        trust_score INTEGER,
+        threat_level TEXT,
+        content_hash TEXT,
+        scan_id TEXT,
+        scanned_at TEXT NOT NULL,
+        error TEXT,
+        FOREIGN KEY (monitor_id) REFERENCES monitors(id)
+      );
+
+      CREATE TABLE IF NOT EXISTS alerts (
+        id TEXT PRIMARY KEY,
+        monitor_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        severity TEXT NOT NULL,
+        message TEXT NOT NULL,
+        skill_url TEXT,
+        old_score INTEGER,
+        new_score INTEGER,
+        acknowledged INTEGER DEFAULT 0,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (monitor_id) REFERENCES monitors(id)
+      );
+
+      CREATE TABLE IF NOT EXISTS webhooks (
+        id TEXT PRIMARY KEY,
+        monitor_id TEXT NOT NULL,
+        url TEXT NOT NULL,
+        secret TEXT NOT NULL,
+        is_active INTEGER DEFAULT 1,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (monitor_id) REFERENCES monitors(id)
+      );
     `);
   }
 
@@ -135,6 +193,13 @@ class AgentShieldDB {
       CREATE INDEX IF NOT EXISTS idx_api_usage_api_key ON api_usage(api_key);
       CREATE INDEX IF NOT EXISTS idx_rate_limits_api_key ON rate_limits(api_key);
       CREATE INDEX IF NOT EXISTS idx_rate_limits_window ON rate_limits(window_start);
+      CREATE INDEX IF NOT EXISTS idx_monitors_user_id ON monitors(user_id);
+      CREATE INDEX IF NOT EXISTS idx_monitor_skills_monitor_id ON monitor_skills(monitor_id);
+      CREATE INDEX IF NOT EXISTS idx_scan_history_monitor_id ON scan_history(monitor_id);
+      CREATE INDEX IF NOT EXISTS idx_scan_history_scanned_at ON scan_history(scanned_at);
+      CREATE INDEX IF NOT EXISTS idx_alerts_monitor_id ON alerts(monitor_id);
+      CREATE INDEX IF NOT EXISTS idx_alerts_created_at ON alerts(created_at);
+      CREATE INDEX IF NOT EXISTS idx_webhooks_monitor_id ON webhooks(monitor_id);
     `);
   }
 

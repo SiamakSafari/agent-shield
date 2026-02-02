@@ -87,6 +87,7 @@ router.post('/checkout', async (req, res) => {
       success_url: `${appUrl}/?billing=success&plan=${plan}`,
       cancel_url: `${appUrl}/?billing=cancelled`,
       metadata: { userId, plan },
+      payment_method_types: ['card'],
       ...(customerId ? { customer: customerId } : {})
     };
 
@@ -450,7 +451,8 @@ router.post('/web-checkout', async (req, res) => {
       success_url: `${appUrl}/pricing.html?billing=success&plan=${plan}`,
       cancel_url: `${appUrl}/pricing.html?billing=cancelled`,
       metadata: { userId, plan },
-      allow_promotion_codes: true
+      allow_promotion_codes: true,
+      payment_method_types: ['card']
     });
 
     res.json({

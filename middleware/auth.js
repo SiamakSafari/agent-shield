@@ -2,11 +2,11 @@
 const crypto = require('crypto');
 
 const API_PLANS = {
-  free: {
+  starter: {
     dailyLimit: 10,
     monthlyLimit: 300,
-    features: ['basic-scan', 'basic-report'],
-    name: 'Free'
+    features: ['basic-scan', 'summary-report'],
+    name: 'Starter ($9/mo)'
   },
   pro: {
     dailyLimit: 1000,
@@ -67,12 +67,15 @@ function authenticateAPI(db) {
     // Allow shield-score endpoints without auth (basic score is public)
     const isShieldScore = req.path.startsWith('/shield-score') || req.path.startsWith('/api/shield-score');
     
-    // For public endpoints and unauthenticated scans, set anonymous user and continue
-    if (isPublicEndpoint || isRegisterPost || isRegisterPlans || isBillingWebhook || isBillingWebCheckout || (isPublicScan && !apiKey) || (isShieldScore && !apiKey)) {
+    // Allow reputation endpoints without auth (public)
+    const isReputation = req.path.startsWith('/reputation') || req.path.startsWith('/api/reputation');
+    
+    // For public endpoints and unauthenticated scans, set anonymous user (demo only)
+    if (isPublicEndpoint || isRegisterPost || isRegisterPlans || isBillingWebhook || isBillingWebCheckout || (isPublicScan && !apiKey) || (isShieldScore && !apiKey) || (isReputation && !apiKey)) {
       req.user = {
         id: 'anonymous',
-        plan: 'free',
-        features: API_PLANS.free.features,
+        plan: 'demo',
+        features: ['basic-scan'],
         isAuthenticated: false
       };
       return next();

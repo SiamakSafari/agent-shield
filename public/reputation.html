@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Reputation — AgentShield | Trust Score for AI Agent Repos</title>
+    <meta name="description" content="Check the reputation and trust score of any AI agent GitHub repository. Security, activity, popularity, and documentation signals combined into one score.">
+    <link rel="canonical" href="https://agent-shield-production.up.railway.app/reputation.html">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-primary: #09090b;
+            --bg-secondary: #111113;
+            --bg-card: #18181b;
+            --bg-card-hover: #1f1f23;
+            --border: #27272a;
+            --border-light: #3f3f46;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --accent-glow: rgba(59, 130, 246, 0.15);
+            --green: #22c55e;
+            --green-bg: rgba(34, 197, 94, 0.1);
+            --yellow: #eab308;
+            --yellow-bg: rgba(234, 179, 8, 0.1);
+            --orange: #f97316;
+            --orange-bg: rgba(249, 115, 22, 0.1);
+            --red: #ef4444;
+            --red-bg: rgba(239, 68, 68, 0.1);
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+        }
+
+        /* NAV */
+        nav {
+            position: fixed; top: 0; width: 100%; z-index: 100;
+            background: rgba(9, 9, 11, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav-inner {
+            max-width: 1200px; margin: 0 auto;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 24px;
+        }
+        .logo {
+            display: flex; align-items: center; gap: 10px;
+            font-weight: 800; font-size: 1.25rem;
+            text-decoration: none; color: var(--text-primary);
+        }
+        .logo-icon {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem;
+        }
+        .nav-links { display: flex; gap: 28px; align-items: center; }
+        .nav-links a {
+            color: var(--text-secondary); text-decoration: none;
+            font-size: 0.9rem; font-weight: 500; transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--text-primary); }
+        .mobile-menu-btn {
+            display: none; background: none; border: none;
+            color: var(--text-primary); font-size: 1.5rem; cursor: pointer;
+        }
+
+        /* HERO */
+        .page-hero {
+            padding: 140px 24px 40px;
+            text-align: center;
+            position: relative;
+        }
+        .page-hero::before {
+            content: '';
+            position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+            width: 800px; height: 500px;
+            background: radial-gradient(ellipse, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .page-hero h1 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 900; letter-spacing: -0.03em;
+            margin-bottom: 16px;
+        }
+        .gradient {
+            background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 50%, #ec4899 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .page-hero p {
+            font-size: 1.15rem; color: var(--text-secondary);
+            max-width: 600px; margin: 0 auto;
+        }
+
+        /* SEARCH */
+        .search-section {
+            max-width: 700px; margin: 40px auto 0; padding: 0 24px;
+        }
+        .search-box {
+            display: flex; gap: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 8px;
+            transition: border-color 0.2s;
+        }
+        .search-box:focus-within { border-color: var(--accent); }
+        .search-box input {
+            flex: 1; background: none; border: none; outline: none;
+            color: var(--text-primary); font-size: 1rem; padding: 10px 12px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .search-box input::placeholder { color: var(--text-muted); }
+        .search-btn {
+            background: var(--accent); color: white; border: none;
+            padding: 10px 24px; border-radius: var(--radius-sm);
+            font-weight: 600; font-size: 0.95rem; cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+        .search-btn:hover { background: var(--accent-hover); }
+        .search-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .search-hint {
+            text-align: center; color: var(--text-muted); font-size: 0.85rem;
+            margin-top: 12px;
+        }
+
+        /* RESULTS */
+        .results-area {
+            max-width: 800px; margin: 48px auto 80px; padding: 0 24px;
+            display: none;
+        }
+        .results-area.visible { display: block; }
+
+        /* Score Header */
+        .score-header {
+            text-align: center; margin-bottom: 40px;
+        }
+        .score-ring {
+            width: 160px; height: 160px; margin: 0 auto 20px;
+            position: relative;
+        }
+        .score-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+        .score-ring-bg { fill: none; stroke: var(--border); stroke-width: 8; }
+        .score-ring-fill { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 1s ease, stroke 0.3s; }
+        .score-value {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 2.5rem; font-weight: 900;
+        }
+        .score-label {
+            font-size: 0.85rem; color: var(--text-muted); margin-top: -4px;
+        }
+        .rating-badge {
+            display: inline-block; padding: 6px 20px; border-radius: 100px;
+            font-weight: 700; font-size: 0.95rem; margin-top: 12px;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .rating-high-trust { background: var(--green-bg); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+        .rating-moderate-trust { background: var(--yellow-bg); color: var(--yellow); border: 1px solid rgba(234,179,8,0.3); }
+        .rating-low-trust { background: var(--orange-bg); color: var(--orange); border: 1px solid rgba(249,115,22,0.3); }
+        .rating-untrusted { background: var(--red-bg); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+
+        .agent-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem; color: var(--text-secondary); margin-top: 8px;
+        }
+
+        /* Signal Cards */
+        .signals-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+            margin-bottom: 32px;
+        }
+        .signal-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 20px;
+            transition: border-color 0.2s;
+        }
+        .signal-card:hover { border-color: var(--border-light); }
+        .signal-top {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 12px;
+        }
+        .signal-name {
+            font-weight: 600; font-size: 0.95rem;
+            text-transform: capitalize;
+        }
+        .signal-score {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700; font-size: 1.1rem;
+        }
+        .signal-bar {
+            width: 100%; height: 6px; background: var(--border);
+            border-radius: 3px; overflow: hidden; margin-bottom: 8px;
+        }
+        .signal-bar-fill {
+            height: 100%; border-radius: 3px;
+            transition: width 0.8s ease;
+        }
+        .signal-meta {
+            display: flex; justify-content: space-between;
+            font-size: 0.8rem; color: var(--text-muted);
+        }
+
+        /* Flags */
+        .flags-section { margin-bottom: 32px; }
+        .flags-section h3 {
+            font-size: 1rem; font-weight: 700; margin-bottom: 12px;
+            color: var(--red);
+        }
+        .flag-item {
+            background: var(--red-bg); border: 1px solid rgba(239,68,68,0.2);
+            border-radius: var(--radius-sm); padding: 10px 16px;
+            font-size: 0.9rem; margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        /* Metadata */
+        .meta-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px;
+        }
+        .meta-item {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); padding: 14px;
+            text-align: center;
+        }
+        .meta-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem; font-weight: 700;
+        }
+        .meta-label { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+
+        /* Loading */
+        .loading { text-align: center; padding: 60px 24px; }
+        .spinner {
+            width: 40px; height: 40px; border: 3px solid var(--border);
+            border-top-color: var(--accent); border-radius: 50%;
+            animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Error */
+        .error-box {
+            background: var(--red-bg); border: 1px solid rgba(239,68,68,0.3);
+            border-radius: var(--radius); padding: 20px; text-align: center;
+            color: var(--text-primary);
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 40px 24px; text-align: center;
+            color: var(--text-muted); font-size: 0.85rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .mobile-menu-btn { display: block; }
+            .signals-grid { grid-template-columns: 1fr; }
+            .search-box { flex-direction: column; }
+            .search-btn { width: 100%; }
+            .meta-grid { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="/" class="logo">
+            <div class="logo-icon">🛡️</div>
+            AgentShield
+        </a>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/#demo">Try It</a>
+            <a href="/reputation.html" style="color: var(--text-primary);">Reputation</a>
+            <a href="/pricing.html">Pricing</a>
+            <a href="/blog">Blog</a>
+            <a href="/discovery">API</a>
+        </div>
+        <button class="mobile-menu-btn" onclick="document.querySelector('.nav-links').style.display = document.querySelector('.nav-links').style.display === 'flex' ? 'none' : 'flex'" aria-label="Menu">☰</button>
+    </div>
+</nav>
+
+<header class="page-hero">
+    <h1>Agent <span class="gradient">Reputation</span> Check</h1>
+    <p>Get a comprehensive trust score for any AI agent repository. Security, activity, popularity, and documentation — all in one score.</p>
+</header>
+
+<section class="search-section">
+    <div class="search-box">
+        <input type="text" id="repoInput" placeholder="owner/repo or https://github.com/owner/repo" autocomplete="off">
+        <button class="search-btn" id="checkBtn" onclick="checkReputation()">Check Reputation</button>
+    </div>
+    <p class="search-hint">Try: <span style="cursor:pointer;color:var(--accent)" onclick="document.getElementById('repoInput').value='vercel/ai';checkReputation()">vercel/ai</span> · <span style="cursor:pointer;color:var(--accent)" onclick="document.getElementById('repoInput').value='langchain-ai/langchain';checkReputation()">langchain-ai/langchain</span> · <span style="cursor:pointer;color:var(--accent)" onclick="document.getElementById('repoInput').value='openai/openai-node';checkReputation()">openai/openai-node</span></p>
+</section>
+
+<div class="results-area" id="results">
+    <!-- Populated by JS -->
+</div>
+
+<footer>
+    <p>© 2025 AgentShield — The Immune System for AI Agents</p>
+</footer>
+
+<script>
+function getScoreColor(score) {
+    if (score >= 80) return '#22c55e';
+    if (score >= 60) return '#eab308';
+    if (score >= 40) return '#f97316';
+    return '#ef4444';
+}
+
+function getRatingClass(rating) {
+    return 'rating-' + rating;
+}
+
+async function checkReputation() {
+    var input = document.getElementById('repoInput').value.trim();
+    if (!input) return;
+
+    var btn = document.getElementById('checkBtn');
+    var area = document.getElementById('results');
+    btn.disabled = true;
+    btn.textContent = 'Checking...';
+    area.className = 'results-area visible';
+
+    area.innerHTML = '<div class="loading"><div class="spinner"></div><p style="color:var(--text-secondary)">Analyzing repository reputation...</p><p style="color:var(--text-muted);font-size:0.85rem;margin-top:8px">This may take 10-20 seconds (security scan + GitHub metadata)</p></div>';
+
+    try {
+        var param = input.includes('github.com') ? 'url=' + encodeURIComponent(input) : 'agent_id=' + encodeURIComponent(input);
+        var resp = await fetch('/api/reputation?' + param);
+        var data = await resp.json();
+
+        if (!resp.ok) {
+            area.innerHTML = '<div class="error-box"><p style="font-weight:600;margin-bottom:8px">⚠️ ' + (data.error || 'Unknown error') + '</p></div>';
+            return;
+        }
+
+        renderResults(data);
+    } catch (err) {
+        area.innerHTML = '<div class="error-box"><p style="font-weight:600">⚠️ Network error</p><p style="color:var(--text-secondary);margin-top:4px">' + err.message + '</p></div>';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Check Reputation';
+    }
+}
+
+function renderResults(d) {
+    var area = document.getElementById('results');
+    var color = getScoreColor(d.reputationScore);
+    var circ = 2 * Math.PI * 68;
+    var offset = circ - (d.reputationScore / 100) * circ;
+
+    var html = '<div class="score-header">';
+    html += '<div class="score-ring"><svg viewBox="0 0 160 160"><circle class="score-ring-bg" cx="80" cy="80" r="68"/><circle class="score-ring-fill" cx="80" cy="80" r="68" stroke="' + color + '" stroke-dasharray="' + circ + '" stroke-dashoffset="' + offset + '"/></svg><div class="score-value" style="color:' + color + '">' + d.reputationScore + '</div></div>';
+    html += '<div class="score-label">Reputation Score</div>';
+    html += '<div class="rating-badge ' + getRatingClass(d.rating) + '">' + d.rating.replace('-', ' ') + '</div>';
+    html += '<div class="agent-name">' + d.agentId + '</div>';
+    html += '</div>';
+
+    // Signals
+    html += '<div class="signals-grid">';
+    var signals = ['security', 'age', 'activity', 'popularity', 'documentation'];
+    var icons = { security: '🔒', age: '📅', activity: '⚡', popularity: '⭐', documentation: '📄' };
+    for (var i = 0; i < signals.length; i++) {
+        var key = signals[i];
+        var sig = d.signals[key];
+        var sc = getScoreColor(sig.score);
+        html += '<div class="signal-card">';
+        html += '<div class="signal-top"><span class="signal-name">' + icons[key] + ' ' + key + '</span><span class="signal-score" style="color:' + sc + '">' + sig.score + '</span></div>';
+        html += '<div class="signal-bar"><div class="signal-bar-fill" style="width:' + sig.score + '%;background:' + sc + '"></div></div>';
+        html += '<div class="signal-meta"><span>' + sig.source + '</span><span>Weight: ' + Math.round(sig.weight * 100) + '%</span></div>';
+        html += '</div>';
+    }
+    html += '</div>';
+
+    // Flags
+    if (d.flags && d.flags.length > 0) {
+        html += '<div class="flags-section"><h3>⚠️ Security Flags (' + d.flags.length + ')</h3>';
+        for (var j = 0; j < d.flags.length; j++) {
+            html += '<div class="flag-item">• ' + d.flags[j] + '</div>';
+        }
+        html += '</div>';
+    }
+
+    // Metadata
+    if (d.metadata) {
+        html += '<div class="meta-grid">';
+        html += '<div class="meta-item"><div class="meta-value">⭐ ' + (d.metadata.stars || 0).toLocaleString() + '</div><div class="meta-label">Stars</div></div>';
+        html += '<div class="meta-item"><div class="meta-value">🍴 ' + (d.metadata.forks || 0).toLocaleString() + '</div><div class="meta-label">Forks</div></div>';
+        html += '<div class="meta-item"><div class="meta-value">💻 ' + (d.metadata.language || 'N/A') + '</div><div class="meta-label">Language</div></div>';
+        html += '<div class="meta-item"><div class="meta-value">⏱️ ' + ((d.metadata.scanDurationMs || 0) / 1000).toFixed(1) + 's</div><div class="meta-label">Scan Time</div></div>';
+        html += '</div>';
+    }
+
+    area.innerHTML = html;
+}
+
+// Enter key triggers search
+document.getElementById('repoInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') checkReputation();
+});
+
+// URL param support
+(function() {
+    var params = new URLSearchParams(window.location.search);
+    var q = params.get('q') || params.get('agent_id') || params.get('url');
+    if (q) {
+        document.getElementById('repoInput').value = q;
+        checkReputation();
+    }
+})();
+</script>
+</body>
+</html>

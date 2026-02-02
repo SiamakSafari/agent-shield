@@ -22,6 +22,7 @@ const registerRoutes = require('./routes/register');
 const billingRoutes = require('./routes/billing');
 const monitorRoutes = require('./routes/monitors');
 const shieldScoreRoutes = require('./routes/shield-score');
+const reputationRoutes = require('./routes/reputation');
 const { startScheduler } = require('./monitoring/scheduler');
 
 async function startServer() {
@@ -138,6 +139,8 @@ async function startServer() {
   app.use('/api/monitors', monitorRoutes);
   app.use('/shield-score', shieldScoreRoutes);
   app.use('/api/shield-score', shieldScoreRoutes);
+  app.use('/reputation', reputationRoutes);
+  app.use('/api/reputation', reputationRoutes);
 
   // Root endpoint - Landing page
   app.get('/', async (req, res) => {
@@ -338,6 +341,7 @@ async function startServer() {
         'GET /api/shield-score?skills=url1,url2',
         'GET /api/shield-score/badge/:score',
         'GET /api/shield-score/leaderboard',
+        'GET /api/reputation?agent_id=OWNER/REPO',
         'GET /health',
         'GET /stats',
         'GET /discovery'

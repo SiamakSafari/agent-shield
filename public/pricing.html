@@ -370,6 +370,7 @@
         <div class="nav-links">
             <a href="/">Home</a>
             <a href="/#demo">Try It</a>
+            <a href="/reputation.html">Reputation</a>
             <a href="/pricing.html" style="color: var(--text-primary);">Pricing</a>
             <a href="/blog">Blog</a>
             <a href="/discovery">API</a>
@@ -381,7 +382,7 @@
 <!-- HERO -->
 <header class="page-hero">
     <h1>Simple, <span class="gradient">transparent</span> pricing</h1>
-    <p>Start free. Upgrade when you need more power. No hidden fees, cancel anytime.</p>
+    <p>Three plans. No free tier. Serious tools for serious builders. Cancel anytime.</p>
 </header>
 
 <!-- STATUS BANNERS -->
@@ -391,27 +392,26 @@
 </div>
 <div class="status-banner cancelled" id="banner-cancelled">
     <h3>Checkout cancelled</h3>
-    <p>No worries — you can subscribe anytime. Your free tier is still active.</p>
+    <p>No worries — come back when you're ready.</p>
 </div>
 
 <!-- PRICING -->
 <section class="pricing-section">
     <div class="pricing-grid">
 
-        <!-- FREE -->
+        <!-- STARTER -->
         <div class="price-card">
-            <h3>Free</h3>
-            <div class="price">$0<span>/mo</span></div>
+            <h3>Starter</h3>
+            <div class="price">$9<span>/mo</span></div>
             <div class="price-desc">For individual developers</div>
             <ul class="feature-list">
                 <li><span class="check">✓</span> 10 scans per day</li>
-                <li><span class="check">✓</span> Full security reports</li>
-                <li><span class="check">✓</span> Trust score & badge</li>
-                <li><span class="check">✓</span> 1 monitor, 5 skills</li>
-                <li><span class="check">✓</span> Daily monitoring scans</li>
+                <li><span class="check">✓</span> Summary security reports</li>
+                <li><span class="check">✓</span> Trust score</li>
+                <li><span class="check">✓</span> API key access</li>
                 <li><span class="check">✓</span> Community support</li>
             </ul>
-            <a href="/#demo" class="price-btn price-btn-secondary">Start Scanning — Free</a>
+            <button class="price-btn price-btn-secondary" onclick="openCheckout('starter')">Get Started →</button>
         </div>
 
         <!-- PRO -->
@@ -421,14 +421,15 @@
             <div class="price-desc">For teams & power users</div>
             <ul class="feature-list">
                 <li><span class="check">✓</span> 1,000 scans per day</li>
+                <li><span class="check">✓</span> Full detailed reports</li>
+                <li><span class="check">✓</span> Shield Score badge</li>
                 <li><span class="check">✓</span> Batch scanning (25/req)</li>
-                <li><span class="check">✓</span> Full API key access</li>
                 <li><span class="check">✓</span> 10 monitors, 100 skills</li>
                 <li><span class="check">✓</span> 6-hour monitoring scans</li>
                 <li><span class="check">✓</span> Alert API access</li>
                 <li><span class="check">✓</span> Email support</li>
             </ul>
-            <button class="price-btn price-btn-primary" onclick="openCheckout('pro')">Subscribe to Pro</button>
+            <button class="price-btn price-btn-primary" onclick="openCheckout('pro')">Get Pro →</button>
         </div>
 
         <!-- ENTERPRISE -->
@@ -445,7 +446,7 @@
                 <li><span class="check">✓</span> SLA guarantees</li>
                 <li><span class="check">✓</span> Dedicated support</li>
             </ul>
-            <button class="price-btn price-btn-secondary" onclick="openCheckout('enterprise')">Subscribe to Enterprise</button>
+            <button class="price-btn price-btn-secondary" onclick="openCheckout('enterprise')">Get Enterprise →</button>
         </div>
 
     </div>
@@ -487,8 +488,8 @@
     <h2>Frequently Asked Questions</h2>
 
     <div class="faq-item">
-        <h4>Can I try AgentShield for free?</h4>
-        <p>Yes! The free tier gives you 10 scans per day with full security reports, trust scores, and badges. No credit card required.</p>
+        <h4>Can I try AgentShield before buying?</h4>
+        <p>There's a live demo scan on the <a href="/" style="color: var(--accent);">homepage</a> — try it free, no account needed. When you're ready for API access and reports, Starter is $9/mo.</p>
     </div>
     <div class="faq-item">
         <h4>How does billing work?</h4>
@@ -496,11 +497,11 @@
     </div>
     <div class="faq-item">
         <h4>What happens if I cancel?</h4>
-        <p>Your subscription stays active until the end of the billing period. After that, you're automatically moved to the free tier — no data is lost.</p>
+        <p>Your subscription stays active until the end of the billing period. After that, your API keys are deactivated. Resubscribe anytime to reactivate.</p>
     </div>
     <div class="faq-item">
         <h4>Do I get an API key?</h4>
-        <p>Yes. When you subscribe, an account is created with a free API key. After your subscription is confirmed, your key is automatically upgraded to your plan's limits.</p>
+        <p>Yes. Every plan includes an API key. Subscribe, get your key, start scanning immediately.</p>
     </div>
     <div class="faq-item">
         <h4>Can I upgrade or downgrade later?</h4>
@@ -515,7 +516,7 @@
 <!-- FOOTER -->
 <footer>
     <div class="footer-inner">
-        <div class="footer-left">© 2025 AgentShield. Built for the agentic era.</div>
+        <div class="footer-left">© 2026 AgentShield. Built for the agentic era.</div>
         <div class="footer-links">
             <a href="/">Home</a>
             <a href="/blog">Blog</a>
@@ -540,8 +541,8 @@
     }
 })();
 
-const planNames = { pro: 'Pro', enterprise: 'Enterprise' };
-const planPrices = { pro: '$19.99/mo', enterprise: '$99.99/mo' };
+const planNames = { starter: 'Starter', pro: 'Pro', enterprise: 'Enterprise' };
+const planPrices = { starter: '$9/mo', pro: '$19.99/mo', enterprise: '$99.99/mo' };
 
 function openCheckout(plan) {
     document.getElementById('checkout-plan').value = plan;

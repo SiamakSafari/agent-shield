@@ -195,6 +195,12 @@ class AgentShieldDB {
         skill_urls TEXT,
         last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS reputation_cache (
+        agent_id TEXT PRIMARY KEY,
+        result_json TEXT NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
     `);
     } catch (error) {
       console.error('[DB] createTables failed:', error.message);
@@ -223,6 +229,7 @@ class AgentShieldDB {
       CREATE INDEX IF NOT EXISTS idx_webhooks_monitor_id ON webhooks(monitor_id);
       CREATE INDEX IF NOT EXISTS idx_shield_scores_score ON shield_scores(score DESC);
       CREATE INDEX IF NOT EXISTS idx_shield_scores_last_updated ON shield_scores(last_updated);
+      CREATE INDEX IF NOT EXISTS idx_reputation_cache_updated ON reputation_cache(updated_at);
     `);
     } catch (error) {
       console.error('[DB] setupIndexes failed:', error.message);

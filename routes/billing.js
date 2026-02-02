@@ -5,6 +5,7 @@ const { API_PLANS, createAPIKey } = require('../middleware/auth');
 
 // Price map: plan name → env var for Stripe Price ID
 const PLAN_PRICES = {
+  starter: { envVar: 'STRIPE_STARTER_PRICE_ID', amount: 900, name: 'Starter' },
   pro: { envVar: 'STRIPE_PRO_PRICE_ID', amount: 1999, name: 'Pro' },
   enterprise: { envVar: 'STRIPE_ENTERPRISE_PRICE_ID', amount: 9999, name: 'Enterprise' }
 };
@@ -210,7 +211,7 @@ router.post('/webhook', async (req, res) => {
       }
 
       case 'customer.subscription.deleted': {
-        // Downgrade to free when subscription is cancelled
+        // Deactivate API keys when subscription is cancelled — no free tier
         const subscription = event.data.object;
         const customerId = subscription.customer;
 
@@ -219,13 +220,13 @@ router.post('/webhook', async (req, res) => {
         const user = await db.get('SELECT user_id FROM users WHERE stripe_customer_id = ?', [customerId]);
 
         if (user) {
-          const freePlan = API_PLANS.free;
-          await db.run('UPDATE users SET plan = ?, stripe_subscription_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', ['free', user.user_id]);
+          // Deactivate all API keys — they need to resubscribe
+          await db.run('UPDATE users SET plan = ?, stripe_subscription_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', ['expired', user.user_id]);
           await db.run(
-            'UPDATE api_keys SET plan = ?, daily_limit = ?, monthly_limit = ? WHERE user_id = ? AND is_active = TRUE',
-            ['free', freePlan.dailyLimit, freePlan.monthlyLimit, user.user_id]
+            'UPDATE api_keys SET is_active = FALSE WHERE user_id = ?',
+            [user.user_id]
           );
-          console.log(`⬇️ User ${user.user_id} downgraded to free (subscription cancelled)`);
+          console.log(`⛔ User ${user.user_id} subscription cancelled — API keys deactivated`);
         }
         break;
       }
@@ -421,11 +422,11 @@ router.post('/web-checkout', async (req, res) => {
       );
       await db.run(
         'INSERT INTO users (user_id, email, name, plan) VALUES (?, ?, ?, ?)',
-        [userId, email, name, 'free']
+        [userId, email, name, 'starter']
       );
-      // Create free API key for them
+      // Create starter API key for them (activated after Stripe payment)
       const { createAPIKey: createKey } = require('../middleware/auth');
-      await createKey(db, userId, 'free');
+      await createKey(db, userId, 'starter');
     }
 
     await ensureStripeColumns(db);

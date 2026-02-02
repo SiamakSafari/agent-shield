@@ -55,8 +55,9 @@ function authenticateAPI(db) {
                             req.path === '/register/' || req.path === '/api/register/') && req.method === 'POST';
     const isRegisterPlans = (req.path === '/register/plans' || req.path === '/api/register/plans') && req.method === 'GET';
     
-    // Allow Stripe webhook without auth (Stripe signs these requests itself)
+    // Allow Stripe webhook and web checkout without auth
     const isBillingWebhook = (req.path === '/billing/webhook' || req.path === '/api/billing/webhook') && req.method === 'POST';
+    const isBillingWebCheckout = (req.path === '/billing/web-checkout' || req.path === '/api/billing/web-checkout') && req.method === 'POST';
     
     // Allow scan endpoints without auth (free tier, IP rate-limited)
     const publicScanPaths = ['/scan', '/scan/', '/scan/url', '/scan/validate', '/scan/stats', '/scan/health',
@@ -67,7 +68,7 @@ function authenticateAPI(db) {
     const isShieldScore = req.path.startsWith('/shield-score') || req.path.startsWith('/api/shield-score');
     
     // For public endpoints and unauthenticated scans, set anonymous user and continue
-    if (isPublicEndpoint || isRegisterPost || isRegisterPlans || isBillingWebhook || (isPublicScan && !apiKey) || (isShieldScore && !apiKey)) {
+    if (isPublicEndpoint || isRegisterPost || isRegisterPlans || isBillingWebhook || isBillingWebCheckout || (isPublicScan && !apiKey) || (isShieldScore && !apiKey)) {
       req.user = {
         id: 'anonymous',
         plan: 'free',

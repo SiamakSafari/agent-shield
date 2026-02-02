@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing — AgentShield | AI Agent Security Plans</title>
+    <meta name="description" content="Choose your AgentShield plan. Free tier for developers, Pro for teams, Enterprise for platforms. Protect your AI agents with security scanning.">
+    <link rel="canonical" href="https://agent-shield-production.up.railway.app/pricing.html">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-primary: #09090b;
+            --bg-secondary: #111113;
+            --bg-card: #18181b;
+            --bg-card-hover: #1f1f23;
+            --border: #27272a;
+            --border-light: #3f3f46;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --accent-glow: rgba(59, 130, 246, 0.15);
+            --green: #22c55e;
+            --green-bg: rgba(34, 197, 94, 0.1);
+            --red: #ef4444;
+            --red-bg: rgba(239, 68, 68, 0.1);
+            --yellow: #eab308;
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+        }
+
+        /* NAV */
+        nav {
+            position: fixed; top: 0; width: 100%; z-index: 100;
+            background: rgba(9, 9, 11, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav-inner {
+            max-width: 1200px; margin: 0 auto;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 24px;
+        }
+        .logo {
+            display: flex; align-items: center; gap: 10px;
+            font-weight: 800; font-size: 1.25rem;
+            text-decoration: none; color: var(--text-primary);
+        }
+        .logo-icon {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem;
+        }
+        .nav-links { display: flex; gap: 28px; align-items: center; }
+        .nav-links a {
+            color: var(--text-secondary); text-decoration: none;
+            font-size: 0.9rem; font-weight: 500; transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--text-primary); }
+        .mobile-menu-btn {
+            display: none; background: none; border: none;
+            color: var(--text-primary); font-size: 1.5rem; cursor: pointer;
+        }
+
+        /* HERO */
+        .page-hero {
+            padding: 140px 24px 60px;
+            text-align: center;
+            position: relative;
+        }
+        .page-hero::before {
+            content: '';
+            position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+            width: 800px; height: 500px;
+            background: radial-gradient(ellipse, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .page-hero h1 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 900; letter-spacing: -0.03em;
+            margin-bottom: 16px;
+        }
+        .page-hero h1 .gradient {
+            background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 50%, #ec4899 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .page-hero p {
+            font-size: 1.15rem; color: var(--text-secondary);
+            max-width: 550px; margin: 0 auto;
+        }
+
+        /* PRICING GRID */
+        .pricing-section {
+            max-width: 1100px; margin: 0 auto;
+            padding: 40px 24px 80px;
+        }
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            align-items: start;
+        }
+        .price-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 36px;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .price-card:hover { border-color: var(--border-light); }
+        .price-card.featured {
+            border-color: var(--accent);
+            box-shadow: 0 0 50px var(--accent-glow), 0 4px 24px rgba(0,0,0,0.3);
+        }
+        .price-card.featured::before {
+            content: 'Most Popular';
+            position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            color: white; padding: 5px 20px; border-radius: 100px;
+            font-size: 0.75rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .price-card h3 {
+            font-size: 1.15rem; font-weight: 700; margin-bottom: 8px;
+        }
+        .price {
+            font-size: 2.75rem; font-weight: 900;
+            font-family: 'JetBrains Mono', monospace;
+            margin-bottom: 4px;
+        }
+        .price span { font-size: 1rem; font-weight: 400; color: var(--text-muted); }
+        .price-desc { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 28px; }
+
+        .feature-list { list-style: none; margin-bottom: 32px; }
+        .feature-list li {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 7px 0; font-size: 0.9rem; color: var(--text-secondary);
+        }
+        .feature-list li .check {
+            color: var(--green); font-weight: 700; flex-shrink: 0; margin-top: 1px;
+        }
+
+        .price-btn {
+            display: block; width: 100%; text-align: center;
+            padding: 14px; border-radius: var(--radius-sm);
+            font-weight: 600; font-size: 0.95rem;
+            text-decoration: none; cursor: pointer;
+            transition: all 0.2s; border: none;
+            font-family: inherit;
+        }
+        .price-btn-primary {
+            background: var(--accent); color: white;
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+        .price-btn-primary:hover {
+            background: var(--accent-hover);
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.25);
+            transform: translateY(-1px);
+        }
+        .price-btn-secondary {
+            background: var(--bg-primary); color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        .price-btn-secondary:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-light);
+        }
+
+        /* MODAL */
+        .modal-overlay {
+            display: none;
+            position: fixed; inset: 0; z-index: 1000;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
+            align-items: center; justify-content: center;
+            padding: 24px;
+        }
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 40px;
+            max-width: 460px; width: 100%;
+            position: relative;
+            animation: modalIn 0.2s ease;
+        }
+        @keyframes modalIn {
+            from { opacity: 0; transform: translateY(12px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .modal-close {
+            position: absolute; top: 16px; right: 16px;
+            background: none; border: none; color: var(--text-muted);
+            font-size: 1.25rem; cursor: pointer; padding: 4px;
+            transition: color 0.2s;
+        }
+        .modal-close:hover { color: var(--text-primary); }
+
+        .modal h2 {
+            font-size: 1.35rem; font-weight: 800; margin-bottom: 6px;
+        }
+        .modal .modal-subtitle {
+            color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 28px;
+        }
+
+        .form-group { margin-bottom: 18px; }
+        .form-group label {
+            display: block; font-size: 0.85rem; font-weight: 600;
+            margin-bottom: 6px; color: var(--text-secondary);
+        }
+        .form-input {
+            width: 100%; padding: 12px 16px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.95rem; font-family: inherit;
+            outline: none; transition: border-color 0.2s;
+        }
+        .form-input:focus { border-color: var(--accent); }
+        .form-input::placeholder { color: var(--text-muted); }
+
+        .modal-btn {
+            width: 100%; padding: 14px;
+            background: var(--accent); color: white;
+            border: none; border-radius: var(--radius-sm);
+            font-weight: 700; font-size: 1rem;
+            cursor: pointer; font-family: inherit;
+            transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .modal-btn:hover { background: var(--accent-hover); }
+        .modal-btn:disabled {
+            opacity: 0.5; cursor: not-allowed;
+        }
+        .modal-btn .spinner-sm {
+            width: 18px; height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: none;
+        }
+        .modal-btn.loading .spinner-sm { display: block; }
+        .modal-btn.loading .btn-text { display: none; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .modal-error {
+            display: none;
+            background: var(--red-bg);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px; margin-bottom: 16px;
+            color: var(--red); font-size: 0.85rem;
+        }
+        .modal-error.visible { display: block; }
+
+        .modal-footer {
+            text-align: center; margin-top: 16px;
+            font-size: 0.8rem; color: var(--text-muted);
+        }
+        .modal-footer a { color: var(--text-secondary); }
+
+        /* SUCCESS / CANCEL BANNERS */
+        .status-banner {
+            display: none;
+            max-width: 700px; margin: 0 auto 32px;
+            padding: 20px 24px;
+            border-radius: var(--radius);
+            text-align: center; font-size: 0.95rem;
+        }
+        .status-banner.visible { display: block; animation: modalIn 0.3s ease; }
+        .status-banner.success {
+            background: var(--green-bg);
+            border: 1px solid rgba(34, 197, 94, 0.25);
+            color: var(--green);
+        }
+        .status-banner.cancelled {
+            background: rgba(234, 179, 8, 0.1);
+            border: 1px solid rgba(234, 179, 8, 0.2);
+            color: var(--yellow);
+        }
+        .status-banner h3 { font-size: 1.1rem; margin-bottom: 4px; }
+        .status-banner p { font-size: 0.9rem; opacity: 0.85; }
+
+        /* FAQ */
+        .faq-section {
+            max-width: 700px; margin: 0 auto;
+            padding: 60px 24px 100px;
+        }
+        .faq-section h2 {
+            font-size: 1.75rem; font-weight: 800;
+            text-align: center; margin-bottom: 40px;
+        }
+        .faq-item {
+            border-bottom: 1px solid var(--border);
+            padding: 20px 0;
+        }
+        .faq-item h4 {
+            font-size: 1rem; font-weight: 600; margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+        .faq-item p {
+            font-size: 0.9rem; color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        /* FOOTER */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 40px 24px;
+        }
+        .footer-inner {
+            max-width: 1200px; margin: 0 auto;
+            display: flex; justify-content: space-between;
+            align-items: center; flex-wrap: wrap; gap: 16px;
+        }
+        .footer-left { color: var(--text-muted); font-size: 0.85rem; }
+        .footer-links { display: flex; gap: 24px; }
+        .footer-links a {
+            color: var(--text-muted); text-decoration: none;
+            font-size: 0.85rem; transition: color 0.2s;
+        }
+        .footer-links a:hover { color: var(--text-secondary); }
+
+        /* RESPONSIVE */
+        @media (max-width: 900px) {
+            .pricing-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
+            .nav-links { display: none; }
+            .mobile-menu-btn { display: block; }
+        }
+        @media (max-width: 480px) {
+            .page-hero { padding: 120px 16px 40px; }
+            .pricing-section { padding: 24px 16px 60px; }
+            .modal { padding: 28px 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+    <div class="nav-inner">
+        <a href="/" class="logo">
+            <div class="logo-icon">🛡️</div>
+            AgentShield
+        </a>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/#demo">Try It</a>
+            <a href="/pricing.html" style="color: var(--text-primary);">Pricing</a>
+            <a href="/blog">Blog</a>
+            <a href="/discovery">API</a>
+        </div>
+        <button class="mobile-menu-btn" onclick="document.querySelector('.nav-links').style.display = document.querySelector('.nav-links').style.display === 'flex' ? 'none' : 'flex'" aria-label="Menu">☰</button>
+    </div>
+</nav>
+
+<!-- HERO -->
+<header class="page-hero">
+    <h1>Simple, <span class="gradient">transparent</span> pricing</h1>
+    <p>Start free. Upgrade when you need more power. No hidden fees, cancel anytime.</p>
+</header>
+
+<!-- STATUS BANNERS -->
+<div class="status-banner success" id="banner-success">
+    <h3>🎉 Subscription activated!</h3>
+    <p>Your plan has been upgraded. Check your email for your API key and getting-started guide.</p>
+</div>
+<div class="status-banner cancelled" id="banner-cancelled">
+    <h3>Checkout cancelled</h3>
+    <p>No worries — you can subscribe anytime. Your free tier is still active.</p>
+</div>
+
+<!-- PRICING -->
+<section class="pricing-section">
+    <div class="pricing-grid">
+
+        <!-- FREE -->
+        <div class="price-card">
+            <h3>Free</h3>
+            <div class="price">$0<span>/mo</span></div>
+            <div class="price-desc">For individual developers</div>
+            <ul class="feature-list">
+                <li><span class="check">✓</span> 10 scans per day</li>
+                <li><span class="check">✓</span> Full security reports</li>
+                <li><span class="check">✓</span> Trust score & badge</li>
+                <li><span class="check">✓</span> 1 monitor, 5 skills</li>
+                <li><span class="check">✓</span> Daily monitoring scans</li>
+                <li><span class="check">✓</span> Community support</li>
+            </ul>
+            <a href="/#demo" class="price-btn price-btn-secondary">Start Scanning — Free</a>
+        </div>
+
+        <!-- PRO -->
+        <div class="price-card featured">
+            <h3>Pro</h3>
+            <div class="price">$19<span>.99/mo</span></div>
+            <div class="price-desc">For teams & power users</div>
+            <ul class="feature-list">
+                <li><span class="check">✓</span> 1,000 scans per day</li>
+                <li><span class="check">✓</span> Batch scanning (25/req)</li>
+                <li><span class="check">✓</span> Full API key access</li>
+                <li><span class="check">✓</span> 10 monitors, 100 skills</li>
+                <li><span class="check">✓</span> 6-hour monitoring scans</li>
+                <li><span class="check">✓</span> Alert API access</li>
+                <li><span class="check">✓</span> Email support</li>
+            </ul>
+            <button class="price-btn price-btn-primary" onclick="openCheckout('pro')">Subscribe to Pro</button>
+        </div>
+
+        <!-- ENTERPRISE -->
+        <div class="price-card">
+            <h3>Enterprise</h3>
+            <div class="price">$99<span>.99/mo</span></div>
+            <div class="price-desc">For platforms & marketplaces</div>
+            <ul class="feature-list">
+                <li><span class="check">✓</span> Unlimited scans</li>
+                <li><span class="check">✓</span> Batch scanning (100/req)</li>
+                <li><span class="check">✓</span> Unlimited monitors & skills</li>
+                <li><span class="check">✓</span> Hourly monitoring scans</li>
+                <li><span class="check">✓</span> Webhook alert delivery</li>
+                <li><span class="check">✓</span> SLA guarantees</li>
+                <li><span class="check">✓</span> Dedicated support</li>
+            </ul>
+            <button class="price-btn price-btn-secondary" onclick="openCheckout('enterprise')">Subscribe to Enterprise</button>
+        </div>
+
+    </div>
+</section>
+
+<!-- CHECKOUT MODAL -->
+<div class="modal-overlay" id="checkout-modal">
+    <div class="modal">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h2 id="modal-title">Subscribe to Pro</h2>
+        <p class="modal-subtitle" id="modal-subtitle">Enter your details to proceed to secure checkout via Stripe.</p>
+
+        <div class="modal-error" id="modal-error"></div>
+
+        <form id="checkout-form" onsubmit="submitCheckout(event)">
+            <input type="hidden" id="checkout-plan" value="">
+            <div class="form-group">
+                <label for="checkout-name">Full Name</label>
+                <input type="text" id="checkout-name" class="form-input" placeholder="Jane Developer" required autocomplete="name">
+            </div>
+            <div class="form-group">
+                <label for="checkout-email">Email Address</label>
+                <input type="email" id="checkout-email" class="form-input" placeholder="jane@example.com" required autocomplete="email">
+            </div>
+            <button type="submit" class="modal-btn" id="modal-submit">
+                <span class="btn-text">Continue to Checkout →</span>
+                <span class="spinner-sm"></span>
+            </button>
+        </form>
+
+        <div class="modal-footer">
+            Secure checkout powered by <a href="https://stripe.com" target="_blank" rel="noopener">Stripe</a>. Cancel anytime.
+        </div>
+    </div>
+</div>
+
+<!-- FAQ -->
+<section class="faq-section">
+    <h2>Frequently Asked Questions</h2>
+
+    <div class="faq-item">
+        <h4>Can I try AgentShield for free?</h4>
+        <p>Yes! The free tier gives you 10 scans per day with full security reports, trust scores, and badges. No credit card required.</p>
+    </div>
+    <div class="faq-item">
+        <h4>How does billing work?</h4>
+        <p>Plans are billed monthly via Stripe. You can upgrade, downgrade, or cancel anytime from your billing portal. No lock-in contracts.</p>
+    </div>
+    <div class="faq-item">
+        <h4>What happens if I cancel?</h4>
+        <p>Your subscription stays active until the end of the billing period. After that, you're automatically moved to the free tier — no data is lost.</p>
+    </div>
+    <div class="faq-item">
+        <h4>Do I get an API key?</h4>
+        <p>Yes. When you subscribe, an account is created with a free API key. After your subscription is confirmed, your key is automatically upgraded to your plan's limits.</p>
+    </div>
+    <div class="faq-item">
+        <h4>Can I upgrade or downgrade later?</h4>
+        <p>Absolutely. Use the Stripe billing portal to change plans at any time. Changes take effect immediately with prorated billing.</p>
+    </div>
+    <div class="faq-item">
+        <h4>Is my payment information secure?</h4>
+        <p>We never see or store your card details. All payments are processed securely by Stripe, which is PCI Level 1 certified.</p>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+    <div class="footer-inner">
+        <div class="footer-left">© 2025 AgentShield. Built for the agentic era.</div>
+        <div class="footer-links">
+            <a href="/">Home</a>
+            <a href="/blog">Blog</a>
+            <a href="/discovery">API</a>
+            <a href="https://github.com/SiamakSafari/agent-shield" target="_blank" rel="noopener">GitHub</a>
+            <a href="/health">Status</a>
+        </div>
+    </div>
+</footer>
+
+<script>
+// Handle billing status from URL params
+(function() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('billing') === 'success') {
+        document.getElementById('banner-success').classList.add('visible');
+        // Clean URL
+        history.replaceState(null, '', '/pricing.html');
+    } else if (params.get('billing') === 'cancelled') {
+        document.getElementById('banner-cancelled').classList.add('visible');
+        history.replaceState(null, '', '/pricing.html');
+    }
+})();
+
+const planNames = { pro: 'Pro', enterprise: 'Enterprise' };
+const planPrices = { pro: '$19.99/mo', enterprise: '$99.99/mo' };
+
+function openCheckout(plan) {
+    document.getElementById('checkout-plan').value = plan;
+    document.getElementById('modal-title').textContent = `Subscribe to ${planNames[plan]}`;
+    document.getElementById('modal-subtitle').textContent =
+        `${planPrices[plan]} — enter your details to proceed to secure Stripe checkout.`;
+    document.getElementById('modal-error').classList.remove('visible');
+    document.getElementById('checkout-form').reset();
+    document.getElementById('checkout-modal').classList.add('active');
+    document.getElementById('checkout-name').focus();
+}
+
+function closeModal() {
+    document.getElementById('checkout-modal').classList.remove('active');
+}
+
+// Close on overlay click
+document.getElementById('checkout-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+
+// Close on Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+});
+
+async function submitCheckout(e) {
+    e.preventDefault();
+
+    const btn = document.getElementById('modal-submit');
+    const errorEl = document.getElementById('modal-error');
+    const plan = document.getElementById('checkout-plan').value;
+    const name = document.getElementById('checkout-name').value.trim();
+    const email = document.getElementById('checkout-email').value.trim();
+
+    if (!name || !email) return;
+
+    errorEl.classList.remove('visible');
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/billing/web-checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plan, name, email })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.message || data.error || 'Checkout failed');
+        }
+
+        if (data.url) {
+            // Redirect to Stripe Checkout
+            window.location.href = data.url;
+        } else {
+            throw new Error('No checkout URL received');
+        }
+    } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.classList.add('visible');
+        btn.classList.remove('loading');
+        btn.disabled = false;
+    }
+}
+</script>
+
+</body>
+</html>

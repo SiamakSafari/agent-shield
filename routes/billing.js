@@ -164,15 +164,46 @@ router.post('/webhook', async (req, res) => {
 
       case 'customer.subscription.updated': {
         const subscription = event.data.object;
-        // Handle plan changes via portal
-        if (subscription.metadata?.userId) {
-          const userId = subscription.metadata.userId;
-          const status = subscription.status;
+        const customerId = subscription.customer;
+        const status = subscription.status;
 
+        await ensureStripeColumns(db);
+        const subUser = await db.get('SELECT user_id FROM users WHERE stripe_customer_id = ?', [customerId]);
+
+        if (subUser) {
           if (status === 'active') {
-            // Subscription is still active — plan may have changed
-            console.log(`🔄 Subscription updated for user ${userId}, status: ${status}`);
+            // Determine plan from price — check metadata first, then price lookup
+            let newPlan = subscription.metadata?.plan;
+            if (!newPlan && subscription.items?.data?.length > 0) {
+              const priceId = subscription.items.data[0].price?.id;
+              if (priceId === process.env.STRIPE_PRO_PRICE_ID) newPlan = 'pro';
+              else if (priceId === process.env.STRIPE_ENTERPRISE_PRICE_ID) newPlan = 'enterprise';
+            }
+            if (newPlan && API_PLANS[newPlan]) {
+              const planConfig = API_PLANS[newPlan];
+              await db.run('UPDATE users SET plan = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', [newPlan, subUser.user_id]);
+              await db.run(
+                'UPDATE api_keys SET plan = ?, daily_limit = ?, monthly_limit = ? WHERE user_id = ? AND is_active = TRUE',
+                [newPlan, planConfig.dailyLimit, planConfig.monthlyLimit, subUser.user_id]
+              );
+              console.log(`🔄 User ${subUser.user_id} plan updated to ${newPlan}`);
+            }
+          } else if (status === 'past_due' || status === 'unpaid') {
+            console.log(`⚠️ User ${subUser.user_id} subscription status: ${status}`);
           }
+        }
+        break;
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object;
+        const customerId = invoice.customer;
+
+        await ensureStripeColumns(db);
+        const failedUser = await db.get('SELECT user_id FROM users WHERE stripe_customer_id = ?', [customerId]);
+        if (failedUser) {
+          console.log(`❌ Payment failed for user ${failedUser.user_id}, invoice ${invoice.id}`);
+          // Don't downgrade immediately — Stripe retries. Downgrade happens on subscription.deleted
         }
         break;
       }
@@ -327,5 +358,111 @@ async function ensureStripeColumns(db) {
     // Column already exists — ignore
   }
 }
+
+// ─── POST /web-checkout — Browser-friendly checkout (no API key needed) ──────
+// Creates or finds user account, then creates Stripe Checkout session
+router.post('/web-checkout', async (req, res) => {
+  const stripe = getStripe();
+  if (!stripe) return billingNotConfigured(res);
+
+  try {
+    const { plan, email, name } = req.body;
+
+    if (!plan || !PLAN_PRICES[plan]) {
+      return res.status(400).json({
+        error: 'Invalid plan',
+        message: 'Specify "plan": "pro" or "plan": "enterprise"',
+        availablePlans: Object.keys(PLAN_PRICES)
+      });
+    }
+
+    if (!email || !name) {
+      return res.status(400).json({
+        error: 'Missing fields',
+        message: 'Both "email" and "name" are required'
+      });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    const priceId = process.env[PLAN_PRICES[plan].envVar];
+    if (!priceId) {
+      return res.status(503).json({
+        error: 'Price not configured',
+        message: `Stripe price ID for ${plan} plan is not set`
+      });
+    }
+
+    const db = req.db;
+    const crypto = require('crypto');
+
+    // Find or create user
+    let user = await db.get('SELECT user_id, stripe_customer_id FROM users WHERE email = ?', [email]);
+    let userId;
+
+    if (user) {
+      userId = user.user_id;
+    } else {
+      // Create user account
+      userId = crypto.randomUUID();
+      await db.run(
+        `CREATE TABLE IF NOT EXISTS users (
+          user_id TEXT PRIMARY KEY,
+          email TEXT UNIQUE NOT NULL,
+          name TEXT NOT NULL,
+          plan TEXT DEFAULT 'free',
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`
+      );
+      await db.run(
+        'INSERT INTO users (user_id, email, name, plan) VALUES (?, ?, ?, ?)',
+        [userId, email, name, 'free']
+      );
+      // Create free API key for them
+      const { createAPIKey: createKey } = require('../middleware/auth');
+      await createKey(db, userId, 'free');
+    }
+
+    await ensureStripeColumns(db);
+
+    // Find or create Stripe customer
+    let customerId = user?.stripe_customer_id;
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email,
+        name,
+        metadata: { userId }
+      });
+      customerId = customer.id;
+      await db.run('UPDATE users SET stripe_customer_id = ? WHERE user_id = ?', [customerId, userId]);
+    }
+
+    const appUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      customer: customerId,
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${appUrl}/pricing.html?billing=success&plan=${plan}`,
+      cancel_url: `${appUrl}/pricing.html?billing=cancelled`,
+      metadata: { userId, plan },
+      allow_promotion_codes: true
+    });
+
+    res.json({
+      url: session.url,
+      sessionId: session.id,
+      plan,
+      message: `Redirect to URL to complete ${PLAN_PRICES[plan].name} subscription`
+    });
+  } catch (error) {
+    console.error('Web checkout error:', error);
+    res.status(500).json({ error: 'Checkout failed', message: error.message });
+  }
+});
 
 module.exports = router;

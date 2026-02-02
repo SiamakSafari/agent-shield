@@ -43,6 +43,7 @@ async function startServer() {
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "https:"],
         scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+        scriptSrcAttr: ["'unsafe-inline'"],
         connectSrc: ["'self'"]
       }
     },
